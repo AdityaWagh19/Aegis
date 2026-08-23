@@ -1,9 +1,8 @@
 # Master Project Document — Aegis
 ### Compliant UPI Autopay / e-NACH Failure Diagnosis & Recovery Agent
 
-> **Revision:** 1.0 | **Date:** 2026-08-23 | **Track:** 03 — AI Revenue Recovery
-> **Deadline:** September 5, 2026 | **Source PRD:** `PRD_Aegis.md`
-> **Composite Win Probability:** 8.5/10 | **Internship Signal:** 8.5–9/10
+> **Revision:** 1.0 | **Track:** 03 — AI Revenue Recovery
+> **Source PRD:** `PRD_Aegis.md` | **Composite Win Probability:** 8.5/10 | **Internship Signal:** 8.5–9/10
 
 ---
 
@@ -1912,7 +1911,7 @@ jobs:
 
 | Constraint | Value | Reason |
 |---|---|---|
-| Timeline | 13 build days (Aug 23 – Sep 5, 2026) | Hackathon deadline |
+| Timeline | 13 build days | MVP delivery |
 | Failure categories modeled | Exactly 6 (the taxonomy) | Depth over breadth |
 | LLM on compliance decisions | Not permitted | Compliance gate is unconditional deterministic code |
 | Tier-2 (LLM) volume | Must not exceed ~30% of the batch | If more, Tier-1 rule engine needs improvement |
