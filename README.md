@@ -12,7 +12,7 @@ Every global dunning tool â€” Stripe Smart Retries, Churnkey, Butter Payments â€
 
 ## Architecture
 
-### System Flow
+### System Pipeline Flow
 
 ```mermaid
 flowchart TD
@@ -32,27 +32,7 @@ flowchart TD
     K --> L[Dashboard\nRs. recovered / at risk\nTier split / Violations]
 ```
 
-### The Six Failure Categories
-
-```mermaid
-graph LR
-    A[Failed Mandate] --> B{Decline Code}
-    B --> C[INSUFFICIENT_FUNDS\n40% of failures]
-    B --> D[BANK_TECHNICAL_DECLINE\n20% of failures]
-    B --> E[MANDATE_PAUSED\n15% of failures]
-    B --> F[AFA_REQUIRED\n10% of failures]
-    B --> G[MANDATE_EXPIRED\n10% of failures]
-    B --> H[NON_REVOCABLE_HARD_DECLINE\n5% of failures]
-
-    C --> C1[SCHEDULE_POST_SALARY]
-    D --> D1[RETRY_AFTER_BACKOFF]
-    E --> E1[SEND_HINGLISH_NUDGE]
-    F --> F1[SEND_UPI_INTENT_PUSH]
-    G --> G1[SEND_MANDATE_RENEWAL_LINK]
-    H --> H1[ESCALATE_TO_HUMAN]
-```
-
-### Compliance Gate Architecture
+### Compliance Enforcement Architecture
 
 ```mermaid
 flowchart LR
@@ -74,87 +54,6 @@ flowchart LR
     T1 -->|proposed action| GATE
     T2 -->|proposed action| GATE
     GATE -->|approved action only| EXEC
-```
-
-### Per-Mandate State Machine
-
-```mermaid
-stateDiagram-v2
-    [*] --> RECEIVED
-    RECEIVED --> TIER1_PROCESSING
-    TIER1_PROCESSING --> TIER1_RESOLVED: Unambiguous
-    TIER1_PROCESSING --> TIER2_PENDING: is_ambiguous = true
-    TIER2_PENDING --> TIER2_RESOLVED: Groq call complete
-    TIER1_RESOLVED --> GATE_CHECK
-    TIER2_RESOLVED --> GATE_CHECK
-    GATE_CHECK --> EXECUTED: Approved
-    GATE_CHECK --> COMPLIANCE_BLOCKED: Violation caught
-    COMPLIANCE_BLOCKED --> ESCALATED
-    EXECUTED --> AUDIT_LOGGED
-    ESCALATED --> AUDIT_LOGGED
-    AUDIT_LOGGED --> [*]
-```
-
-### Database Schema
-
-```mermaid
-erDiagram
-    mandate_events {
-        uuid mandate_id PK
-        varchar customer_id
-        int amount
-        varchar mandate_type
-        varchar product_category
-        varchar decline_code
-        int days_since_salary_credit
-        int prior_bounce_count
-        boolean is_revocable
-        int attempt_number
-        timestamptz event_timestamp
-        uuid batch_id
-        boolean is_held_out
-        varchar correct_action
-    }
-
-    recovery_decisions {
-        uuid decision_id PK
-        uuid mandate_id FK
-        smallint tier_that_decided
-        varchar proposed_action
-        boolean compliance_approved
-        boolean violation_blocked
-        varchar violation_rule
-        varchar final_action
-        varchar outcome
-        text rationale
-        decimal confidence
-        text hinglish_message
-        jsonb alternatives
-        jsonb razorpay_response
-        timestamptz decided_at
-    }
-
-    audit_log {
-        bigserial entry_id PK
-        uuid mandate_id
-        uuid decision_id
-        timestamptz timestamp
-        jsonb payload
-    }
-
-    human_review_queue {
-        uuid review_id PK
-        uuid mandate_id FK
-        varchar reason
-        varchar compliance_rule
-        timestamptz created_at
-        timestamptz resolved_at
-        varchar resolved_by
-    }
-
-    mandate_events ||--o{ recovery_decisions : "has"
-    mandate_events ||--o{ human_review_queue : "may escalate to"
-    recovery_decisions ||--|| audit_log : "produces"
 ```
 
 ### Deployment Architecture
