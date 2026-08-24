@@ -52,6 +52,18 @@ jobs:
           npm ci
           npm run build
 
+      - name: Allow runner IP on SSH (temporary SG rule)
+        run: |
+          aws configure set region ap-south-1
+          RUNNER_IP=$(curl -s https://checkip.amazonaws.com)
+          aws ec2 authorize-security-group-ingress \
+            --group-id sg-0a3f917df67b9698c \
+            --protocol tcp --port 22 --cidr "${RUNNER_IP}/32" \
+            --tag-specifications "ResourceType=security-group-rule,Tags=[{Key=Name,Value=aegis-ci-temp},{Key=ci-run,Value=${{ github.run_id }}}]"
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID_CI }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY_CI }}
+
       - name: Set up SSH key
         run: |
           mkdir -p ~/.ssh
@@ -82,3 +94,18 @@ jobs:
             docker compose up --build -d
             sudo systemctl reload nginx
             echo "Aegis deployed successfully"
+
+      - name: Revoke temporary SSH rule (always)
+        if: always()
+        run: |
+          aws configure set region ap-south-1
+          RULE_ID=$(aws ec2 describe-security-group-rules \
+            --filters Name=tag:ci-run,Values=${{ github.run_id }} \
+            --query "SecurityGroupRules[0].SecurityGroupRuleId" --output text)
+          if [ "$RULE_ID" != "None" ]; then
+            aws ec2 revoke-security-group-ingress --group-id sg-0a3f917df67b9698c --security-group-rule-ids "$RULE_ID"
+            echo "Revoked $RULE_ID"
+          fi
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID_CI }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY_CI }}
