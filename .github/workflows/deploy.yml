@@ -56,6 +56,7 @@ jobs:
         run: |
           aws configure set region ap-south-1
           RUNNER_IP=$(curl -s https://checkip.amazonaws.com)
+          echo "RUNNER_IP=${RUNNER_IP}" >> "$GITHUB_ENV"
           aws ec2 authorize-security-group-ingress \
             --group-id sg-0a3f917df67b9698c \
             --protocol tcp --port 22 --cidr "${RUNNER_IP}/32" \
@@ -99,13 +100,14 @@ jobs:
         if: always()
         run: |
           aws configure set region ap-south-1
-          RULE_ID=$(aws ec2 describe-security-group-rules \
-            --filters Name=tag:ci-run,Values=${{ github.run_id }} \
-            --query "SecurityGroupRules[0].SecurityGroupRuleId" --output text)
-          if [ "$RULE_ID" != "None" ]; then
-            aws ec2 revoke-security-group-ingress --group-id sg-0a3f917df67b9698c --security-group-rule-ids "$RULE_ID"
-            echo "Revoked $RULE_ID"
-          fi
+          RULE_IDS=$(aws ec2 describe-security-group-rules \
+            --filters "Name=tag:ci-run,Values=${{ github.run_id }}" \
+            --query "SecurityGroupRules[].SecurityGroupRuleId" --output text)
+          for id in $RULE_IDS; do
+            aws ec2 revoke-security-group-ingress \
+              --group-id sg-0a3f917df67b9698c \
+              --security-group-rule-ids "$id" && echo "Revoked $id"
+          done
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID_CI }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY_CI }}
