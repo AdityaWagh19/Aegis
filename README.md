@@ -1,14 +1,8 @@
 # Aegis
 
-![Aegis](Aegis_web.png)
+![Aegis](Aegis_readme.png)
 
 **Compliant UPI Autopay & e-NACH Failure Diagnosis and Recovery Agent**
-
-**Live Demo:** https://aegis-platform.duckdns.org
-
-Indian subscription businesses and Non-Banking Financial Companies (NBFCs) lose 10–20% of recurring revenue to mandate execution failures across UPI Autopay and e-NACH rails. These failure modes are structural to the Indian payments ecosystem: they involve NPCI mandate mechanics, RBI pre-debit notification constraints, AFA thresholds, and salary-cycle timing that global dunning tools (Stripe Smart Retries, Churnkey, Butter Payments) do not support.
-
-Aegis is a compliant Sidecar and batch recovery system that diagnoses mandate failures by root cause, selects legally compliant recovery actions, executes them via payment gateway APIs (e.g. Razorpay test/live modes), and guarantees zero regulatory violations through an unconditional, deterministic compliance gate.
 
 **Live Demo:** https://aegis-platform.duckdns.org  
 **API Base URL:** https://aegis-platform.duckdns.org/api/v1  
@@ -34,8 +28,8 @@ flowchart TD
 
     subgraph REASONING["2. Two-Tier Decision Engine"]
         ORCH --> T1{"Tier-1 Rule Engine\nDeterministic Lookup"}
-        T1 -->|"60–80% resolved · < 5ms P95"| GATE["Compliance Gate"]
-        T1 -->|"20–40% ambiguous"| T2["Tier-2 Reasoning Agent\nGroq openai/gpt-oss-120b"]
+        T1 -->|"60-80% resolved · < 5ms P95"| GATE["Compliance Gate"]
+        T1 -->|"20-40% ambiguous"| T2["Tier-2 Reasoning Agent\nGroq openai/gpt-oss-120b"]
         T2 -->|"Structured JSON Tool Call"| GATE
     end
 
@@ -52,7 +46,7 @@ flowchart TD
         EXEC --> AUDIT["Append-Only Audit Log\nImmutable Storage"]
         ESC --> AUDIT
         AUDIT --> CB["Outbound Client Callback\nHMAC-Signed Webhook"]
-        AUDIT --> DASH["Real-Time Dashboard\nMetrics · Overrides · Audit Trail"]
+        AUDIT --> DASH["Real-Time Dashboard\nMetrics / Overrides / Audit Trail"]
     end
 ```
 
@@ -64,8 +58,8 @@ The failure taxonomy forms the foundation of Aegis. Every Tier-1 rule, Tier-2 pr
 
 | Decline Code | Root Cause | Recovery Action | Why Global Tools Fail in India |
 |---|---|---|---|
-| `INSUFFICIENT_FUNDS` | Debit attempted before customer salary credit | `SCHEDULE_POST_SALARY` | Standard card retry algorithms retry immediately or on exponential backoff, failing before monthly salary credit dates (typically 1st–5th). |
-| `AFA_REQUIRED` | Silent recurring debit exceeds NPCI AFA threshold | `SEND_UPI_INTENT_PUSH` | Global tools attempt silent gateway retries; NPCI rules mandate explicit customer authentication above ₹15,000 (₹1,00,000 for SIPs/Insurance). |
+| `INSUFFICIENT_FUNDS` | Debit attempted before customer salary credit | `SCHEDULE_POST_SALARY` | Standard card retry algorithms retry immediately or on exponential backoff, failing before monthly salary credit dates (typically 1st-5th). |
+| `AFA_REQUIRED` | Silent recurring debit exceeds NPCI AFA threshold | `SEND_UPI_INTENT_PUSH` | Global tools attempt silent gateway retries; NPCI rules mandate explicit customer authentication above Rs. 15,000 (Rs. 1,00,000 for SIPs/Insurance). |
 | `MANDATE_PAUSED` | Customer paused mandate after RBI 24h pre-debit notice | `SEND_HINGLISH_NUDGE` | Pausing is a statutory right under RBI regulations. Auto-retrying a paused mandate violates compliance. Requires customer engagement/loss-aversion nudging. |
 | `BANK_TECHNICAL_DECLINE` | Transient issuing bank downtime or switch timeout | `RETRY_AFTER_BACKOFF` | Handled via progressive retry backoff schedules aligned with NPCI clearing windows. |
 | `NON_REVOCABLE_HARD_DECLINE` | Non-revocable mandate (Loan EMI) second hard bounce | `ESCALATE_TO_HUMAN` | Auto-retrying non-revocable loans after hard declines incurs illegal bounce penalties on borrowers and violates RBI fair recovery guidelines. |
@@ -107,7 +101,7 @@ flowchart LR
 
 1. **Non-Revocable Mandates (Rule 1):** If `is_revocable = False` and `decline_code = NON_REVOCABLE_HARD_DECLINE`, any proposed retry is blocked and forced to `ESCALATE_TO_HUMAN`.
 2. **Maximum Retry Attempts Cap (Rule 2):** If `attempt_number >= max_retry_attempts` (`UPI_AUTOPAY: 3`, `ENACH: 2`), all retry actions are blocked and escalated to human review.
-3. **AFA Threshold Routing (Rule 3):** If mandate `amount > afa_threshold` (`₹15,000` general, `₹1,00,000` for SIP/Insurance via `product_category`), any silent retry is automatically redirected to `SEND_UPI_INTENT_PUSH`.
+3. **AFA Threshold Routing (Rule 3):** If mandate `amount > afa_threshold` (Rs. 15,000 general, Rs. 1,00,000 for SIP/Insurance via `product_category`), any silent retry is automatically redirected to `SEND_UPI_INTENT_PUSH`.
 4. **24-Hour Pre-Debit Notice Enforcement (Rule 4):** If `decline_code = MANDATE_PAUSED`, auto-retries are rejected and redirected to `SEND_HINGLISH_NUDGE`.
 
 ---
@@ -155,7 +149,7 @@ Aegis/
 └── .env.example                     # Environment variable template
 ```
 
-> **Note:** Files marked with *(Phase 9 roadmap)* are not yet implemented. The current MVP (Phases 1–8) delivers the full batch processing pipeline with deterministic compliance, LLM-assisted ambiguous-case resolution, and a working dashboard.
+> **Note:** Files marked with *(Phase 9 roadmap)* are not yet implemented. The current MVP (Phases 1-8) delivers the full batch processing pipeline with deterministic compliance, LLM-assisted ambiguous-case resolution, and a working dashboard.
 
 ---
 
@@ -164,8 +158,8 @@ Aegis/
 ### Prerequisites
 * Python 3.12 (required)
 * Node.js 20+
-* Groq API Key → [console.groq.com](https://console.groq.com)
-* Razorpay Test Account → [dashboard.razorpay.com](https://dashboard.razorpay.com)
+* Groq API Key -> [console.groq.com](https://console.groq.com)
+* Razorpay Test Account -> [dashboard.razorpay.com](https://dashboard.razorpay.com)
 
 ### Installation
 
@@ -227,7 +221,7 @@ Full request/response schemas and examples: [`project-context/api.md`](project-c
 | **Compliance Violations Executed** | **0** | **0** | ✅ Hard assertion passed |
 | **Compliance Violations Caught** | **> 0** | **35** | ✅ Gate active |
 | **Tier-1 Resolution Rate** | **60% – 80%** | **81%** | ✅ Above target |
-| **False Escalation Rate** | **< 15%** | **22%** | ⚠️ Safety-first gate redirects counted |
+| **False Escalation Rate** | **< 15%** | **22%** | ⚠ Safety-first gate redirects counted |
 | **Tier-1 Latency (P95)** | **< 5ms** | **< 1ms** | ✅ Well within target |
 | **Tier-2 Latency (P95)** | **< 3,000ms** | **~1,200ms** | ✅ Well within target |
 
@@ -235,14 +229,14 @@ Full request/response schemas and examples: [`project-context/api.md`](project-c
 
 | Category | Recovery Rate | Note |
 |---|---|---|
-| `AFA_REQUIRED` | 100% | Clear threshold → intent push |
+| `AFA_REQUIRED` | 100% | Clear threshold -> intent push |
 | `MANDATE_EXPIRED` | 100% | Renewal link always correct |
 | `MANDATE_PAUSED` | 100% | Nudge is the only valid action |
 | `NON_REVOCABLE_HARD_DECLINE` | 100% | Escalation is the only legal path |
 | `INSUFFICIENT_FUNDS` | 14.9% | Composite cases: gate redirects legitimate `SCHEDULE_POST_SALARY` on high amounts |
 | `BANK_TECHNICAL_DECLINE` | 22.2% | Max-retry escalations counted against ground truth |
 
-> **Honest analysis (D3 — report honestly):** The four non-composite categories score 100%. The lower aggregate accuracy on `INSUFFICIENT_FUNDS` (14.9%) and `BANK_TECHNICAL_DECLINE` (22.2%) is **not** misclassification — it is the compliance gate *correctly* redirecting legitimate `SCHEDULE_POST_SALARY`/`RETRY_AFTER_BACKOFF` proposals when amounts exceed the AFA threshold or retry caps are hit. The ground-truth labels represent the "naive" correct action without compliance constraints. The gate correctly overrides them, which the evaluation counts as a mismatch. The false-escalation rate (22%) similarly counts safety-first max-retry escalations as "false" against naive labels. The system is working as designed; the labels don't model compliance gating. See `project-context/progress.md` for full analysis.
+> **Honest analysis:** The four non-composite categories score 100%. The lower aggregate accuracy on `INSUFFICIENT_FUNDS` (14.9%) and `BANK_TECHNICAL_DECLINE` (22.2%) is **not** misclassification — it is the compliance gate *correctly* redirecting legitimate `SCHEDULE_POST_SALARY`/`RETRY_AFTER_BACKOFF` proposals when amounts exceed the AFA threshold or retry caps are hit. The ground-truth labels represent the "naive" correct action without compliance constraints. The gate correctly overrides them, which the evaluation counts as a mismatch. The false-escalation rate (22%) similarly counts safety-first max-retry escalations as "false" against naive labels. The system is working as designed; the labels do not model compliance gating. See `project-context/progress.md` for full analysis.
 
 ---
 
@@ -263,7 +257,7 @@ python -m synthetic.evaluator
 
 ## Deployment
 
-Aegis deploys to a single EC2 instance (t3.micro → upgradeable to t3.medium) in **ap-south-1 (Mumbai)** via GitHub Actions CI/CD:
+Aegis deploys to a single EC2 instance (t3.micro -> upgradeable to t3.medium) in **ap-south-1 (Mumbai)** via GitHub Actions CI/CD:
 
 ```bash
 # On EC2 (one-time setup):
@@ -275,9 +269,9 @@ Aegis deploys to a single EC2 instance (t3.micro → upgradeable to t3.medium) i
 
 **Live Demo:** https://aegis-platform.duckdns.org  
 **API:** https://aegis-platform.duckdns.org/api/v1  
-**Health:** https://aegis-platform.duckdns.org/health
+**Health:** https://aegis-platform.duckdns.org/health  
 
-**CI/CD:** Push to `main` → GitHub Actions runs tests → builds dashboard → rsync → `docker compose up --build -d` on EC2.  
+**CI/CD:** Push to `main` -> GitHub Actions runs tests -> builds dashboard -> rsync -> `docker compose up --build -d` on EC2.  
 **Secrets required in GitHub repo settings:** `EC2_HOST`, `EC2_USERNAME`, `EC2_SSH_PRIVATE_KEY`, `AWS_ACCESS_KEY_ID_CI`, `AWS_SECRET_ACCESS_KEY_CI`.
 
 ---
