@@ -46,7 +46,7 @@
 - [x] Security groups open: ports 22 (owner IP only), 80, 443
 - [x] Docker + Docker Compose + Nginx + certbot installed (cloud-init user-data)
 - [x] `/home/ubuntu/Aegis/.env` created with all real values (chmod 600; asyncpg DB URL)
-- [x] Nginx config created and enabled (`sites-available/aegis`, server_name = Elastic IP); SSL via certbot pending domain purchase (certbot installed and ready)
+- [x] Nginx config created and enabled (`sites-available/aegis`); **SSL via certbot done (2026-08-24)** — Let's Encrypt cert for `aegis-platform.duckdns.org` (auto-renews, expires 2026-11-22); HTTP→HTTPS redirect enforced
 - [ ] Razorpay test Plan + Subscription created for charge simulator *(manual step in Razorpay dashboard)*
 - [x] GitHub repo secrets: `EC2_HOST`, `EC2_SSH_PRIVATE_KEY`, `EC2_USERNAME` (+ scoped `AWS_ACCESS_KEY_ID_CI` / `AWS_SECRET_ACCESS_KEY_CI` for the IAM user `aegis-ci` that toggles temporary SSH rules per deploy)
 - [x] GitHub Actions pipeline live: push to main → tests → dashboard build → rsync → docker compose up (first green run 32715992524)

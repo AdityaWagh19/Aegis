@@ -382,8 +382,27 @@
 ### Tomorrow
 
 - Razorpay test Plan + Subscription creation (dashboard UI step)
-- Domain purchase → certbot SSL → ALLOWED_ORIGINS/APP_HOST update
 - Phase 8 evaluation on held-out set
+
+---
+
+## SSL Session — Aug 24 (same day, eleventh session)
+
+### Built
+
+- Let's Encrypt certificate for `aegis-platform.duckdns.org` via `certbot --nginx` (auto-renew scheduled; expires 2026-11-22); HTTP→HTTPS 301 redirect enforced
+- nginx server_name switched from Elastic IP to the domain
+- Server `.env` updated: `ALLOWED_ORIGINS=https://aegis-platform.duckdns.org,…`, `APP_HOST=aegis-platform.duckdns.org`; api container force-recreated to pick it up
+- Frontend API client switched from hardcoded `http://localhost:8000` to **same-origin** — production browsers now call their own origin over HTTPS through nginx; Vite dev proxy mirrors `/api` + `/webhooks` so local dev is unchanged. CI deployed the fix automatically.
+
+### Failures and Fixes
+
+- **Production bug caught pre-emptively:** the old default base URL meant any visitor's browser would try `http://localhost:8000` on *their* machine. Same-origin + nginx proxy is the correct pattern; verified live after deploy.
+
+### Metrics
+
+- `https://` dashboard 200 (TLS verify OK, issuer Let's Encrypt YR2) · http→https 301 · `/api/v1/metrics` 200 · unsigned webhook 403 · CORS echoes https origin
+- Post-fix pipeline green in ~63s; site live at https://aegis-platform.duckdns.org
 
 ---
 
