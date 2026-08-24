@@ -1,6 +1,6 @@
 # Phase 3: Compliance Gate
 
-> **Status:** [ ] Not started
+> **Status:** [x] Complete (2026-08-24)
 > **Estimated duration:** Day 5
 > **Depends on:** Phase 1 (models, config loader)
 > **Note:** Phase 3 is independent of Phase 2. It can be built while Phase 2 tests are being run. However, sequencing Phase 3 after Phase 2 reduces context-switching.
@@ -382,14 +382,14 @@ def test_no_final_action_is_none():
 
 ## Acceptance Criteria
 
-- [ ] `pytest tests/unit/test_compliance_gate.py -v` exits with code 0.
-- [ ] Every rule has at least one activation test (violation caught) and one pass-through test (compliant action approved).
-- [ ] `test_compliance_gate_has_no_tier_imports` passes.
-- [ ] `test_no_final_action_is_none` passes — `final_action` is never `None`.
-- [ ] `ComplianceResult.violation_rule` is `None` for approved actions and a non-empty string for blocked actions.
-- [ ] Rule 1 (non-revocable) triggers only when `is_revocable=False` AND `decline_code="NON_REVOCABLE_HARD_DECLINE"`. It does not trigger for revocable mandates with the same code.
-- [ ] Rule 3 (AFA) uses `product_category` to select between `afa_threshold_general` and `afa_threshold_sip_insurance`.
-- [ ] Rule 4 (24h notice) redirects to `SEND_HINGLISH_NUDGE`, not `ESCALATE_TO_HUMAN`.
+- [x] `pytest tests/unit/test_compliance_gate.py -v` exits with code 0. (24/24)
+- [x] Every rule has at least one activation test (violation caught) and one pass-through test (compliant action approved).
+- [x] `test_compliance_gate_has_no_tier_imports` passes. *(Implemented as AST import scan — the planned substring scan false-positived on the module's own INVARIANTS docstring; same fix as Phase 2.)*
+- [x] `test_no_final_action_is_none` passes — `final_action` is never `None`. (6 codes × 7 allowed actions swept)
+- [x] `ComplianceResult.violation_rule` is `None` for approved actions and a non-empty string for blocked actions.
+- [x] Rule 1 (non-revocable) triggers only when `is_revocable=False` AND `decline_code="NON_REVOCABLE_HARD_DECLINE"`. It does not trigger for revocable mandates with the same code.
+- [x] Rule 3 (AFA) uses `product_category` to select between `afa_threshold_general` and `afa_threshold_sip_insurance`.
+- [x] Rule 4 (24h notice) redirects to `SEND_HINGLISH_NUDGE`, not `ESCALATE_TO_HUMAN`.
 
 ---
 

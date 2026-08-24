@@ -180,6 +180,35 @@
 
 ---
 
+## Phase 3 Execution — Aug 24 (same day, fourth session)
+
+### Built
+
+- `core/compliance_gate.py` — `ComplianceGate` class per plans/phase-3-compliance-gate.md Task 3.1: four rules in severity order (non-revocable > max-retry > AFA > 24h notice), first-violation-wins, config injected at construction, redirects per D5 (`ESCALATE_TO_HUMAN` / `SEND_UPI_INTENT_PUSH` / `SEND_HINGLISH_NUDGE`), never returns `final_action=None`.
+- `tests/unit/test_compliance_gate.py` — 24 tests: activation + pass-through per rule, rule-1 scope check (revocable mandate with NON_REVOCABLE code not blocked), SIP vs general AFA threshold selection, non-retry actions exempt from retry caps, full 6-code × 7-action `final_action is not None` sweep.
+
+### Failures and Fixes
+
+- **Same plan bug as Phase 2, caught pre-emptively** — `test_compliance_gate_has_no_tier_imports` substring-scans source for "tier1_engine"/"tier2_agent", which appear in the gate module's own INVARIANTS docstring. Applied the identical AST import-extraction fix used in Phase 2 before running the suite; passed first try. (Considered patching the docstring instead, but the AST test is strictly stronger and the docstring documents a real invariant worth keeping.)
+
+### Decisions Made
+
+- Kept the plan's Rule 1 scope note verbatim in code comments: the rule triggers only when `is_revocable=False AND decline_code == NON_REVOCABLE_HARD_DECLINE`. Documented alternative (`if not event.is_revocable:`) stays available if broader protection is ever required.
+- Test count is 24 (plan deliverable text said "25+"); the plan's own Task 3.2 defines exactly 24 and covers every activation/pass-through pair — implemented exactly, count recorded honestly.
+
+### Metrics
+
+- `pytest tests/unit/test_compliance_gate.py -v`: **24 passed**, 0 failures
+- Full unit suite after Phase 2+3: **41 passed**, 0 failures
+- Tier-1 regression measurement unchanged: 83.8% resolved, P95 ≈ 0.00ms
+- Gate purity: no DB/filesystem/network access; only injected `ComplianceConfig`
+
+### Tomorrow
+
+- Execute Phase 4: Tier-2 Groq agent (`services/groq_client.py`, `core/tier2_agent.py`) with schema-validation tests
+
+---
+
 ## Day 3 — Aug 25
 
 ### Built

@@ -89,19 +89,21 @@
 
 ## Phase 3 — Compliance Gate (Day 5: Aug 27)
 
-- [ ] `core/compliance_gate.py` — `check(event, proposed_action, config) -> ComplianceResult`
-  - [ ] Rule 1: Non-revocable hard decline — any action != `ESCALATE_TO_HUMAN` blocked
-  - [ ] Rule 2: Max retry attempts cap
-  - [ ] Rule 3: AFA threshold routing → redirect to `SEND_UPI_INTENT_PUSH`
-  - [ ] Rule 4: 24h pre-debit notice → redirect to `SEND_HINGLISH_NUDGE`
-- [ ] Verify: zero imports from `tier1_engine.py` or `tier2_agent.py`
-- [ ] `tests/unit/test_compliance_gate.py` — all test cases from `test.md`
-  - [ ] Every rule has activation test + pass-through test
+- [x] `core/compliance_gate.py` — `check(event, proposed_action, config) -> ComplianceResult` *(class-based `ComplianceGate.check(event, proposed_action)` with config injected at construction per plans/phase-3-compliance-gate.md D1)*
+  - [x] Rule 1: Non-revocable hard decline — any action != `ESCALATE_TO_HUMAN` blocked
+  - [x] Rule 2: Max retry attempts cap
+  - [x] Rule 3: AFA threshold routing → redirect to `SEND_UPI_INTENT_PUSH`
+  - [x] Rule 4: 24h pre-debit notice → redirect to `SEND_HINGLISH_NUDGE`
+- [x] Verify: zero imports from `tier1_engine.py` or `tier2_agent.py` (AST import scan in test suite)
+- [x] `tests/unit/test_compliance_gate.py` — all test cases from `test.md` (24 tests; plan deliverable said "25+", actual plan-specified set is 24 — full coverage of activation+pass-through per rule plus general/structural)
+  - [x] Every rule has activation test + pass-through test
 
 ### Phase 3 Acceptance Criteria
 
-- [ ] All `test_compliance_gate.py` tests pass — zero failures
-- [ ] Gate is a pure function; no LLM imports
+> Authoritative criteria: plans/phase-3-compliance-gate.md §Acceptance Criteria — all satisfied (2026-08-24).
+
+- [x] All `test_compliance_gate.py` tests pass — zero failures (24/24)
+- [x] Gate is a pure function; no LLM imports
 
 ---
 
