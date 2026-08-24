@@ -8,5 +8,10 @@ export default defineConfig({
   server: {
     port: 3000,
     strictPort: true,
+    proxy: {
+      // mirrors the nginx routes so dev uses the same relative API paths
+      '/api': 'http://localhost:8000',
+      '/webhooks': 'http://localhost:8000',
+    },
   },
 })

@@ -2,7 +2,10 @@
 import axios from 'axios';
 import type { AggregateMetrics, AuditEntry, BatchResult, BatchUploadResponse, HumanReviewItem } from '../types/aegis';
 
-const BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+// Same-origin by default: nginx proxies /api/* and /webhooks/* to the backend
+// (works identically on https://aegis-platform.duckdns.org and via the Vite
+// dev-server proxy). Override with VITE_API_BASE_URL for split deployments.
+const BASE = import.meta.env.VITE_API_BASE_URL || '';
 const api = axios.create({ baseURL: BASE, timeout: 60000 });
 
 export async function uploadBatch(file: File): Promise<BatchUploadResponse> {
