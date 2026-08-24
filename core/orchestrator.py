@@ -38,6 +38,7 @@ async def process_batch(events: list[MandateEvent]) -> BatchResult:
     async with AsyncSessionLocal() as db:
         for event in events:
             event.batch_id = batch_id
+            await _persist_event(event, db)
             decision = await _process_single(event, db)
             decisions.append(decision)
 
@@ -48,6 +49,36 @@ async def process_batch(events: list[MandateEvent]) -> BatchResult:
         metrics=metrics,
         decisions=decisions,
     )
+
+
+async def _persist_event(event: MandateEvent, db: AsyncSession) -> None:
+    """
+    Persist the MandateEvent before its decision is recorded.
+
+    PostgreSQL enforces the FK from human_review_queue / recovery_decisions to
+    mandate_events — SQLite silently ignores it, which is why this only
+    surfaced at deployment. merge() keeps re-uploads of the same mandate id
+    idempotent.
+    """
+    await db.merge(
+        MandateEventORM(
+            mandate_id=event.mandate_id,
+            customer_id=event.customer_id,
+            amount=event.amount,
+            mandate_type=event.mandate_type,
+            product_category=event.product_category,
+            decline_code=event.decline_code,
+            days_since_salary_credit=event.days_since_salary_credit,
+            prior_bounce_count=event.prior_bounce_count,
+            is_revocable=event.is_revocable,
+            attempt_number=event.attempt_number,
+            event_timestamp=event.timestamp,
+            batch_id=event.batch_id or "",
+            is_held_out=event.is_held_out,
+            correct_action=event.correct_action,
+        )
+    )
+    await db.commit()
 
 
 async def _process_single(event: MandateEvent, db: AsyncSession) -> RecoveryDecision:
