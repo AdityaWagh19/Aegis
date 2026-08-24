@@ -282,6 +282,43 @@
 
 ---
 
+## Phase 6 Execution — Aug 24 (same day, seventh session)
+
+### Built
+
+- `api/main.py` — FastAPI app with lifespan (`init_db()` at startup), CORS from `ALLOWED_ORIGINS`, `/health`, all 7 routers registered
+- `api/routes/recovery.py` — CSV upload (parse-in-route per D3, inline `await process_batch()` per D2), `_batch_cache` polling endpoint (Phase 9 migration target noted in code)
+- `api/routes/mandates.py`, `metrics.py` (DB-aggregated per D6), `audit.py` (paginated), `human_review.py` (+ resolve POST), `webhooks.py` (HMAC-SHA256 verified)
+- Zero business logic in routes — every handler delegates to `core/`
+
+### Failures and Fixes
+
+- **Plan bug: inverted `is_held_out` parsing** — recovery.py compared `.lower() == "false"`, marking every row held-out. Fixed to `== "true"` (no pipeline impact today; field is informational).
+- **Plan bug: missing import** — audit.py used `func.count` but never imported `func` → would NameError on first `/audit` request. Added to the import line.
+- **Webhook "500" during smoke** — PowerShell quote-stripping mangled the JSON body identically for signer and sender, so HMAC passed but `json.loads` failed. Test-harness artifact, not an app bug; retested correctly via `--data-binary @file`. Observation recorded: a valid-signature + malformed-JSON body returns 500 — acceptable while Razorpay only sends well-formed signed payloads; harden if webhook retries become an issue.
+
+### Decisions Made
+
+- Kept plan's `_batch_cache` design (D5's DB-reconstruction description is superseded by Task 6.2's actual code); Phase 9 replaces it with `batch_jobs`.
+- `data/demo_10.csv` regenerated on demand (`head -11 data/synthetic.csv > data/demo_10.csv`) rather than committed — it contains rows derived from held-out records; avoids duplicating eval data in another artifact.
+
+### Metrics (live server run, port 8000)
+
+- Boot: uvicorn started clean; `GET /health` → `{"status":"ok","service":"aegis"}`
+- `POST /api/v1/recovery/batch` (demo_10.csv): **HTTP 202**, batch_id returned, record_count=10, parse_errors=[], tier split 8/2 (80.0%), violations caught=6 / executed=0
+- `GET /recovery/batch/{id}` → 200, 10 decisions · `GET /metrics` → total=16, violations_executed=0, recovery_by_category populated
+- `GET /audit?page=1&page_size=3` → paginated JSON (total=16) · `GET /human-review` → 3 items incl. one `max_retry_attempts_exceeded_2`
+- Webhook: no signature → **403** JSON; valid HMAC-SHA256 → **200** received/ignored
+- CORS: `access-control-allow-origin: http://localhost:3000` present on preflight and GET
+- 404/422 paths return JSON (`{"detail": ...}`), not HTML
+- Regression after API layer: **52/52 tests pass**
+
+### Tomorrow
+
+- Execute Phase 7: React dashboard consuming these endpoints
+
+---
+
 ## Day 3 — Aug 25
 
 ### Built

@@ -56,10 +56,10 @@
 
 > Authoritative criteria: plans/phase-1-foundation.md §Acceptance Criteria — all 10 satisfied there (2026-08-24). The two items below belong to later-phase deliverables per plans/overview.md.
 
-- [ ] `pytest tests/unit/test_models.py -v` — all pass *(test suite begins Phase 2 per plans/overview.md File Index; models validated via direct instantiation checks in Phase 1)*
+- [x] `pytest tests/unit/test_models.py -v` — all pass *(test suite begins Phase 2 per plans/overview.md File Index; models validated via direct instantiation checks in Phase 1 — now 52 tests green across unit+integration)*
 - [x] `python -m synthetic.generator` produces 500-row CSV
 - [x] `data/synthetic_held_out.csv` committed; never modified after this point
-- [ ] `GET /health` returns `{ "status": "ok" }` *(requires api/main.py — Phase 6 deliverable per plans/overview.md File Index)*
+- [x] `GET /health` returns `{ "status": "ok" }` *(delivered with api/main.py in Phase 6 per plans/overview.md; verified live 2026-08-24)*
 
 ---
 
@@ -157,20 +157,22 @@
 
 ## Phase 6 — API Layer (Days 9–10: Sep 1–2)
 
-- [ ] `api/routes/recovery.py` — `POST /api/v1/recovery/batch` (sync CSV upload, returns `{status:"complete", metrics:{...}}`), `GET /api/v1/recovery/batch/{batch_id}`
-- [ ] `api/routes/mandates.py` — `GET /api/v1/mandates/{id}`
-- [ ] `api/routes/metrics.py` — `GET /api/v1/metrics`
-- [ ] `api/routes/audit.py` — `GET /api/v1/audit` (paginated; use `func.count()` not `func().count()`)
-- [ ] `api/routes/human_review.py` — `GET /api/v1/human-review`
-- [ ] `api/routes/webhooks.py` — `POST /webhooks/razorpay` (HMAC validate, inline processing; Phase 9 replaces with ARQ enqueue)
-- [ ] Note `_batch_cache` in recovery.py as Phase 9 migration target
-- [ ] Register all routers in `api/main.py`
+- [x] `api/routes/recovery.py` — `POST /api/v1/recovery/batch` (sync CSV upload, returns `{status:"complete", metrics:{...}}`), `GET /api/v1/recovery/batch/{batch_id}`
+- [x] `api/routes/mandates.py` — `GET /api/v1/mandates/{id}`
+- [x] `api/routes/metrics.py` — `GET /api/v1/metrics`
+- [x] `api/routes/audit.py` — `GET /api/v1/audit` (paginated; use `func.count()` not `func().count()`)
+- [x] `api/routes/human_review.py` — `GET /api/v1/human-review`
+- [x] `api/routes/webhooks.py` — `POST /webhooks/razorpay` (HMAC validate, inline processing; Phase 9 replaces with ARQ enqueue)
+- [x] Note `_batch_cache` in recovery.py as Phase 9 migration target
+- [x] Register all routers in `api/main.py`
 
 ### Phase 6 Acceptance Criteria
 
-- [ ] `POST /api/v1/recovery/batch` returns `{status:"complete", metrics:{...}}` for valid CSV
-- [ ] All endpoints return shapes matching `project-context/api.md`
-- [ ] `POST /webhooks/razorpay` returns 200 (valid HMAC), 403 (invalid HMAC)
+> Authoritative criteria: plans/phase-6-api-layer.md §Acceptance Criteria — all satisfied (2026-08-24).
+
+- [x] `POST /api/v1/recovery/batch` returns `{status:"complete", metrics:{...}}` for valid CSV (HTTP 202, live run: 10 records, 8/2 tier split)
+- [x] All endpoints return shapes matching `project-context/api.md`
+- [x] `POST /webhooks/razorpay` returns 200 (valid HMAC), 403 (invalid HMAC)
 
 ---
 

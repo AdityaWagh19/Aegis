@@ -1,6 +1,6 @@
 # Phase 6: API Layer
 
-> **Status:** [ ] Not started
+> **Status:** [x] Complete (2026-08-24)
 > **Estimated duration:** Days 9–10
 > **Depends on:** Phase 5 (`process_batch()` fully working and integration-tested)
 
@@ -461,14 +461,14 @@ curl http://localhost:8000/api/v1/human-review
 
 ## Acceptance Criteria
 
-- [ ] `uvicorn api.main:app` starts without error on a clean `.env` configuration.
-- [ ] `GET /health` returns `200 OK` with `{"status": "ok"}`.
-- [ ] `POST /api/v1/recovery/batch` with a valid 10-row CSV returns `202` with `batch_id` and `metrics`.
-- [ ] `GET /api/v1/metrics` returns `compliance_violations_executed: 0`.
-- [ ] `GET /api/v1/audit` returns one entry per processed mandate.
-- [ ] `POST /webhooks/razorpay` with a missing or invalid signature returns `403`.
-- [ ] All routes return JSON (not HTML error pages) on `404` and `422` errors.
-- [ ] CORS headers are present in all responses for requests from `http://localhost:3000`.
+- [x] `uvicorn api.main:app` starts without error on a clean `.env` configuration.
+- [x] `GET /health` returns `200 OK` with `{"status": "ok"}`. (Returns `{"status":"ok","service":"aegis"}`.)
+- [x] `POST /api/v1/recovery/batch` with a valid 10-row CSV returns `202` with `batch_id` and `metrics`.
+- [x] `GET /api/v1/metrics` returns `compliance_violations_executed: 0`.
+- [x] `GET /api/v1/audit` returns one entry per processed mandate. (total=16 after live batches)
+- [x] `POST /webhooks/razorpay` with a missing or invalid signature returns `403`. (Valid HMAC → 200 also verified.)
+- [x] All routes return JSON (not HTML error pages) on `404` and `422` errors.
+- [x] CORS headers are present in all responses for requests from `http://localhost:3000`.
 
 ---
 
