@@ -1,25 +1,33 @@
-# Phase 7: Dashboard
+# Phase 7: Dashboard & Frontend
 
 > **Status:** [ ] Not started
 > **Estimated duration:** Days 10–11
 > **Depends on:** Phase 6 (all API endpoints returning correct data)
+> **Design system:** `project-context/design.md` (consolidated from `/DESIGN.md`, `/tokens.json`, `/variables.css`, `/theme.css`). All styling MUST consume the Tailwind v4 tokens from `theme.css` — hardcoded hex values in the code samples below are superseded by those tokens.
 
 ---
 
 ## Objective
 
-Build a React 18 + TypeScript dashboard that consumes the Aegis API and presents recovery metrics, per-mandate decision trails, compliance override cards, Hinglish message previews, and a CSV batch uploader. The compliance override card is the most important component — it must be clearly visible with all relevant fields rendered, and serve as the centrepiece of the demo.
+Build a React 18 + TypeScript frontend that (a) presents the recovery console — metrics, per-mandate decision trails, compliance override cards, Hinglish message previews, CSV batch uploader — and (b) wraps it in a complete product surface: landing page, docs page, and demo onboarding (login/logout). The compliance override card is the most important component — it must be clearly visible with all relevant fields rendered, and serve as the centrepiece of the demo.
 
 ---
 
 ## Scope
 
-- React 18 + TypeScript project in `dashboard/`
+- React 18 + TypeScript project in `dashboard/` styled with Tailwind v4 (`theme.css` `@theme` tokens)
 - Typed API client (`dashboard/src/api/aegis.ts`)
-- 9 components as specified below
-- 3 pages: `Dashboard`, `Batch`, `Audit`
+- 9 core components as specified below, restyled to the design system
+- **5 routes** (+ app shell): Landing `/`, Docs `/docs`, Login `/login`, App Dashboard `/app`, Batch `/app/batch`, Audit `/app/audit`
+- Demo auth gate (localStorage session; real API-key auth arrives Phase 9)
 - `npm run dev` runs locally at `http://localhost:3000`
 - `npm run build` produces a production build in `dashboard/dist/`
+
+---
+
+## Page Count Discipline
+
+Exactly the routes above — no pricing page, no blog, no settings pages, no team management. Every page earns its place: landing explains, docs unblocks integration, login gates the demo, and the three app pages map 1:1 to user jobs (see status → decide → verify). New pages require a plan amendment.
 
 ---
 
@@ -40,6 +48,15 @@ This is a design requirement, not a preference. Any compliance override in the b
 **D5 — `BatchUploader` shows a progress indicator during processing.**
 Because `process_batch()` processes events sequentially, batches with significant Tier-2 routing can take >30s (worst case: 30% Tier-2 on 200 records = ~60s). The uploader renders a spinner/progress bar after upload. The `POST /api/v1/recovery/batch` response is awaited inline.
 
+**D6 — Design tokens via Tailwind v4 `@theme`; zero hardcoded colors.**
+`theme.css` is copied to `dashboard/src/styles/` and imported first; all components style themselves exclusively with token-derived utilities (e.g., `bg-stone-canvas`, `text-warm-gray`, `border-stone-border`, `rounded-full`, `shadow-md`). The four semantic status tokens from `design.md` §2.3 are added as `@theme` extensions (`--status-success/warning/danger/info`) and used only for outcome meaning — never decoration. This replaces every inline-style hex in the original component sketches below.
+
+**D7 — react-router-dom with three layouts; demo auth gate.**
+Routes: `/` Landing, `/docs` Docs (public, MarketingLayout); `/login` Login (AuthLayout); `/app/*` Dashboard/Batch/Audit inside `AppShell`. `AppShell` mounts an `AuthGuard` reading a localStorage session (`lib/auth.ts`). This is explicitly a demo gate — the login page and sidebar state this honestly; Phase 9 API-key auth replaces it without route changes.
+
+**D8 — Marketing pages are content-complete but component-light.**
+Landing and Docs reuse app components only where genuinely useful (dashboard preview mock). Landing sections: hero + highlight span, floating preview, how-it-works trio, six failure categories grid, compliance promise, inverted footer. Docs: sticky anchor sidebar + prose covering architecture, compliance rules, CSV format dictionary, full API reference with curl examples. Both render meaningful copy from project-context docs — no lorem ipsum anywhere in the build.
+
 ---
 
 ## Project Initialisation
@@ -50,8 +67,13 @@ cd dashboard
 npm create vite@latest . -- --template react-ts
 npm install
 npm install recharts axios react-dropzone
+npm install react-router-dom
+npm install tailwindcss @tailwindcss/vite
+npm install @fontsource/inter @fontsource-variable/inter-tight
 npm run dev
 ```
+
+Vite config registers `@tailwindcss/vite`. Entry CSS (`src/styles/index.css`) imports in order: fontsource packages, `./theme.css` (copied from repo root, with the four `--status-*` extensions from design.md §2.3 appended), Tailwind's `@import "tailwindcss";`.
 
 ---
 
@@ -62,6 +84,16 @@ dashboard/
 ├── src/
 │   ├── api/
 │   │   └── aegis.ts
+│   ├── styles/
+│   │   ├── index.css            (font imports + theme.css + tailwind)
+│   │   └── theme.css            (copied from /theme.css + status tokens)
+│   ├── lib/
+│   │   ├── auth.ts              (demo session get/set/clear)
+│   │   └── format.ts            (rupee en-IN, dates, humanizeAction)
+│   ├── layouts/
+│   │   ├── MarketingLayout.tsx  (top nav + footer)
+│   │   ├── AuthLayout.tsx       (centered card)
+│   │   └── AppShell.tsx         (sidebar + AuthGuard)
 │   ├── components/
 │   │   ├── MetricCards.tsx
 │   │   ├── TierSplitChart.tsx
@@ -73,15 +105,22 @@ dashboard/
 │   │   ├── HumanReviewQueue.tsx
 │   │   └── BatchUploader.tsx
 │   ├── pages/
-│   │   ├── Dashboard.tsx
-│   │   ├── Batch.tsx
-│   │   └── Audit.tsx
+│   │   ├── Landing.tsx
+│   │   ├── Docs.tsx
+│   │   ├── Login.tsx
+│   │   └── app/
+│   │       ├── Dashboard.tsx    (/app overview)
+│   │       ├── Batch.tsx        (/app/batch)
+│   │           └── Audit.tsx    (/app/audit)
 │   ├── types/
-│   │   └── aegis.ts          (TypeScript interfaces matching API response shapes)
-│   └── App.tsx
+│   │   └── aegis.ts             (TypeScript interfaces matching API response shapes)
+│   ├── main.tsx                 (router setup: BrowserRouter + route table)
+│   └── App.tsx                  (layout-aware <Routes/> tree)
 ├── public/
 └── package.json
 ```
+
+> **Restyling rule:** the TypeScript sketches below predate the design system and contain hardcoded colors (e.g. `#22c55e`, `#ef4444`, `#3b82f6`). Implement each component against the token utilities from `project-context/design.md` instead — structure and props remain exactly as specified; only styling sources change. Metric stat values use ink-black text with semantic-color context lines (no colored card borders); ComplianceOverrideCard uses `status-warning` tint/border treatment per design.md §5.4; chart slices use `soot` + `sky-wash`; HinglishMessagePreview keeps its tinted-card pattern via `status-success` tokens.
 
 ---
 
@@ -523,42 +562,68 @@ export default function BatchUploader({ onResult }: Props) {
 }
 ```
 
-### Task 7.10 — Assemble pages
+### Task 7.0 — Design-system setup
+Copy `/theme.css` → `src/styles/theme.css`; append the four `--status-*` tokens (design.md §2.3); wire `index.css` (fonts → theme → tailwind); register the Tailwind v4 Vite plugin; copy `lib/auth.ts` + `lib/format.ts` specs from design.md; verify a token utility (`bg-stone-canvas`) renders before building anything else.
 
-**`Dashboard.tsx`** — Loads `GET /api/v1/metrics` and `GET /api/v1/human-review` on mount. Renders `MetricCards`, `TierSplitChart`, `RecoveryByCategoryTable`, `HumanReviewQueue`.
+### Tasks 7.1–7.9 — Types, API client, and the 9 core components
+As specified below. Styling per the Restyling rule above.
 
-**`Batch.tsx`** — Renders `BatchUploader`. On result: renders `MetricCards` (batch metrics), `MandateList` (all decisions). Displays `ComplianceOverrideCard` for every decision where `violation_blocked=true`.
+### Task 7.10a — Layouts and routing
+`main.tsx`: `BrowserRouter` with the 6-route table (design.md §5.2). Build `MarketingLayout`, `AuthLayout`, `AppShell` (+`AuthGuard` via `lib/auth.ts`). Sidebar nav: Overview / Batches / Audit trail, env chip "Test mode", Sign out (clears session → `/login`).
 
-**`Audit.tsx`** — Loads `GET /api/v1/audit` with pagination. Renders a table of all audit entries with mandate ID, timestamp, tier, final action, outcome.
+### Task 7.10b — Landing page (`/`)
+Sections per design.md §5.4: hero (eyebrow tag, display headline with ONE highlight span on "compliance-first", subhead, cyan+ghost CTA pair, test-mode trust line) · floating dashboard preview with tab-pill switcher · how-it-works feature trio · six failure categories 3×2 grid · compliance promise block ("violations reaching execution: 0 — asserted in tests") · inverted footer. Copy sourced from project-context/context.md — no placeholders.
 
-**`App.tsx`** — Tabbed navigation between Dashboard, Batch, and Audit pages.
+### Task 7.10c — Docs page (`/docs`)
+Sticky anchor sidebar (Overview, Two-tier architecture, Compliance rules, CSV format, API reference, Actions allow-list). Prose + tables drawn from project-context docs; endpoint list with method/path pills and curl examples for all seven endpoints; CSV column dictionary table. Code blocks: soot cards, 13px mono.
+
+### Task 7.10d — Login page (`/login`)
+AuthLayout card per design.md: email+password fields, cyan CTA, ghost "Continue as guest", demo-gate helper text mentioning Phase 9 API-key auth. On success: `setSession()` → navigate `?next` or `/app`. Inline status-danger hint for empty/invalid input (still permits guest entry).
+
+### Task 7.10e — App pages assembly
+
+**`/app` Dashboard** — Loads `GET /api/v1/metrics` and `GET /api/v1/human-review`. Renders `MetricCards`, `TierSplitChart` (with printed tier counts beside it), `RecoveryByCategoryTable`, `HumanReviewQueue`.
+
+**`/app/batch` Batch** — Three states: empty (dropzone + sample-CSV link + format summary) / processing (spinner + honest timing note) / results. Results order: batch metric stats → ComplianceOverrideCard section FIRST when any `violation_blocked=true` exists → MandateList → MandateDetailDrawer on row click (full decision trail + HinglishMessagePreview + alternatives + collapsed Razorpay response).
+
+**`/app/audit` Audit** — Paginated audit table with mono mandate-id search filter; append-only caption; pill pagination controls.
+
+**Route guards** — `/app/*` wrapped by AuthGuard; unauthenticated → `/login?next=…`.
 
 ---
 
 ## Validation Strategy
 
 1. `npm run dev` starts without error.
-2. Upload `data/demo_10.csv` (generated in Phase 6 smoke test) via the `BatchUploader`.
-3. Verify `MetricCards` shows non-zero Rs. at risk and Rs. recovered.
-4. Verify `TierSplitChart` shows a non-zero Tier-1 slice.
-5. Verify `ComplianceOverrideCard` appears for at least one mandate (inject a non-revocable case into `demo_10.csv`).
-6. Verify `HinglishMessagePreview` renders for at least one Tier-2 decision.
-7. `npm run build` exits with code 0.
+2. Landing `/` renders all sections with real copy; exactly one cyan CTA in the hero; one highlight span per headline.
+3. Docs `/docs` renders with working anchor sidebar and curl examples for every endpoint.
+4. `/login` gates `/app`: visiting `/app` unauthenticated redirects to login; signing in (or guest) lands on Overview.
+5. Upload `data/demo_10.csv` (regenerate: `head -11 data/synthetic.csv > data/demo_10.csv`) via the `BatchUploader`.
+6. Verify `MetricCards` shows non-zero Rs. at risk and Rs. recovered.
+7. Verify `TierSplitChart` shows a non-zero Tier-1 slice.
+8. Verify `ComplianceOverrideCard` appears for at least one mandate (inject a non-revocable case into `demo_10.csv`).
+9. Verify `HinglishMessagePreview` renders for at least one Tier-2 decision.
+10. Sign out from the sidebar returns to `/login`; browser console stays clean throughout.
+11. `npm run build` exits with code 0.
 
 ---
 
 ## Acceptance Criteria
 
 - [ ] `npm run dev` starts at `http://localhost:3000` without error.
+- [ ] All six routes render: `/`, `/docs`, `/login`, `/app`, `/app/batch`, `/app/audit` — styled exclusively via design tokens (no hardcoded hex in component code).
+- [ ] `AuthGuard`: unauthenticated `/app/*` access redirects to `/login?next=…`; sign-in and guest paths both work; Sign out clears session.
+- [ ] Landing page contains hero + highlight span, floating preview, how-it-works, six-category grid, compliance promise, footer — with real product copy and zero lorem ipsum.
+- [ ] Docs page documents all seven API endpoints with curl examples plus the CSV column dictionary.
 - [ ] `BatchUploader` accepts a CSV, shows loading state, and renders `MandateList` on success.
-- [ ] `MetricCards` renders all four stats from the batch result.
-- [ ] `TierSplitChart` renders a pie chart with two non-zero segments.
-- [ ] `ComplianceOverrideCard` is rendered and visually distinct (red border) for any `violation_blocked=true` decision.
+- [ ] `MetricCards` renders all four stats from the batch result (ink values, semantic context lines).
+- [ ] `TierSplitChart` renders a donut/pie with two non-zero segments using the monochrome chart palette.
+- [ ] `ComplianceOverrideCard` is rendered and visually distinct for any `violation_blocked=true` decision, shown before the mandate list.
 - [ ] `HinglishMessagePreview` renders inside `MandateDetailDrawer` for Tier-2 decisions.
-- [ ] `HumanReviewQueue` shows items from `GET /api/v1/human-review`.
-- [ ] `Audit.tsx` renders paginated audit log entries.
+- [ ] `HumanReviewQueue` shows items from `GET /api/v1/human-review` with working resolve buttons.
+- [ ] Audit page renders paginated entries with search filter.
 - [ ] `npm run build` produces `dashboard/dist/` with no TypeScript errors.
-- [ ] No `console.error` or unhandled promise rejections in the browser console during the upload flow.
+- [ ] No `console.error` or unhandled promise rejections in the browser console during landing → login → upload → audit flow.
 
 ---
 

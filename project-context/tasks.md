@@ -176,25 +176,37 @@
 
 ---
 
-## Phase 7 — Dashboard (Days 10–11: Sep 2–3)
+## Phase 7 — Dashboard & Frontend (Days 10–11: Sep 2–3)
 
-- [ ] React app initialized in `dashboard/`
+> **Revised scope (2026-08-24):** design system adopted per `project-context/design.md` — Tailwind v4 tokens, 6 routes across Marketing/Auth/App layouts, demo auth gate. See `plans/phase-7-dashboard.md`.
+
+- [ ] Design-system setup: `theme.css` into `src/styles/`, status-token extensions, Fontsource Inter + Inter Tight, Tailwind v4 Vite plugin
+- [ ] React app initialized in `dashboard/` (Vite + TS + react-router-dom)
+- [ ] Layouts: `MarketingLayout`, `AuthLayout`, `AppShell` (+ `AuthGuard` via `lib/auth.ts`)
+- [ ] Landing page `/` — hero + highlight span, floating preview, how-it-works trio, six-category grid, compliance promise, footer
+- [ ] Docs page `/docs` — anchor sidebar, architecture/compliance/CSV/API-reference content, curl examples for all endpoints
+- [ ] Login page `/login` — demo auth gate (localStorage session), honest Phase 9 note, guest path
 - [ ] `dashboard/src/api/aegis.ts` — typed client for all endpoints
-- [ ] `components/MetricCards.tsx` — Rs. recovered, recovery %, violations
-- [ ] `components/TierSplitChart.tsx` — Tier-1 vs Tier-2 donut (Recharts)
+- [ ] `lib/format.ts` — rupee en-IN / dates / humanizeAction
+- [ ] `components/MetricCards.tsx` — Rs. recovered, recovery %, violations (ink values + semantic context lines)
+- [ ] `components/TierSplitChart.tsx` — Tier-1 vs Tier-2 donut (Recharts, monochrome palette)
 - [ ] `components/RecoveryByCategoryTable.tsx` — per-category recovery rate
-- [ ] `components/MandateList.tsx` — scrollable mandate table
+- [ ] `components/MandateList.tsx` — mandate table with tier badges + outcome badges
 - [ ] `components/MandateDetailDrawer.tsx` — full decision trail on click
-- [ ] `components/ComplianceOverrideCard.tsx` — THE demo-critical component
+- [ ] `components/ComplianceOverrideCard.tsx` — THE demo-critical component (warning-tint treatment, shown before list)
 - [ ] `components/HinglishMessagePreview.tsx` — message preview card
-- [ ] `components/HumanReviewQueue.tsx` — escalated mandates
-- [ ] `components/BatchUploader.tsx` — CSV drag-and-drop (react-dropzone)
-- [ ] Pages: `Dashboard.tsx`, `Batch.tsx`, `Audit.tsx`
-- [ ] Manual end-to-end test: upload demo CSV → all components render
+- [ ] `components/HumanReviewQueue.tsx` — escalated mandates with resolve action
+- [ ] `components/BatchUploader.tsx` — CSV drag-and-drop (react-dropzone) with three batch states
+- [ ] App pages: `app/Dashboard.tsx`, `app/Batch.tsx`, `app/Audit.tsx`
+- [ ] Manual end-to-end test: login → upload demo CSV → all components render → sign out; console clean
 
 ### Phase 7 Acceptance Criteria
 
+> Authoritative criteria: plans/phase-7-dashboard.md §Acceptance Criteria (revised).
+
 - [ ] Dashboard at `http://localhost:3000`, no console errors
+- [ ] All six routes render with token-only styling
+- [ ] Auth gate redirects unauthenticated `/app/*` → `/login`
 - [ ] `ComplianceOverrideCard` shows correct override data for non-revocable case
 - [ ] Hinglish message visible for at least one `MANDATE_PAUSED` case
 
