@@ -59,8 +59,7 @@ jobs:
           echo "RUNNER_IP=${RUNNER_IP}" >> "$GITHUB_ENV"
           aws ec2 authorize-security-group-ingress \
             --group-id sg-0a3f917df67b9698c \
-            --protocol tcp --port 22 --cidr "${RUNNER_IP}/32" \
-            --tag-specifications "ResourceType=security-group-rule,Tags=[{Key=Name,Value=aegis-ci-temp},{Key=ci-run,Value=${{ github.run_id }}}]"
+            --protocol tcp --port 22 --cidr "${RUNNER_IP}/32"
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID_CI }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY_CI }}
@@ -101,8 +100,9 @@ jobs:
         run: |
           aws configure set region ap-south-1
           RULE_IDS=$(aws ec2 describe-security-group-rules \
-            --filters "Name=tag:ci-run,Values=${{ github.run_id }}" \
-            --query "SecurityGroupRules[].SecurityGroupRuleId" --output text)
+            --filters "Name=group-id,Values=sg-0a3f917df67b9698c" \
+            --query "SecurityGroupRules[?CidrIpv4=='${RUNNER_IP}/32' && FromPort==22].SecurityGroupRuleId" \
+            --output text)
           for id in $RULE_IDS; do
             aws ec2 revoke-security-group-ingress \
               --group-id sg-0a3f917df67b9698c \
@@ -111,3 +111,4 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID_CI }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY_CI }}
+          RUNNER_IP: ${{ env.RUNNER_IP }}
