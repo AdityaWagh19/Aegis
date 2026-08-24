@@ -1,0 +1,18 @@
+{
+  "total_held_out": 100,
+  "correct_actions": 46,
+  "accuracy": 0.46,
+  "recovery_rate_by_category": {
+    "MANDATE_EXPIRED": 1.0,
+    "INSUFFICIENT_FUNDS": 0.1489,
+    "MANDATE_PAUSED": 1.0,
+    "BANK_TECHNICAL_DECLINE": 0.2222,
+    "AFA_REQUIRED": 1.0,
+    "NON_REVOCABLE_HARD_DECLINE": 1.0
+  },
+  "false_escalation_rate": 0.22,
+  "tier1_resolution_rate": 0.81,
+  "tier2_resolution_rate": 0.19,
+  "compliance_violations_caught": 35,
+  "compliance_violations_executed": 0
+}
