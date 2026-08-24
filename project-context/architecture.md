@@ -406,4 +406,153 @@ class EvaluationResult(BaseModel):
 
 ---
 
-*Source: Master_Aegis.md §10, §12, §13, §17, §19, §20, §21, §26 | Last updated: 2026-08-23*
+## Production Architecture (Phase 9)
+
+> **Integration model:** Model A — Sidecar. Aegis sits alongside an existing Razorpay Subscriptions deployment. No changes to the NBFC's core system are required. One webhook URL registration is the complete client-side integration effort.
+
+### Production Stack
+
+| Layer | Technology | Purpose |
+|---|---|---|
+| API process | FastAPI (2 workers) | Webhook intake, batch upload, dashboard API |
+| Worker process | ARQ + asyncio | Async mandate event processing (decoupled from API) |
+| Job queue | Redis 7 | Webhook event queue + Tier-2 rate limit sliding window |
+| Database | PostgreSQL 16 | All persistent state (tenants, decisions, audit log) |
+| Reverse proxy | Nginx | SSL termination, `/metrics` access restriction |
+| Observability | Prometheus + Grafana | Per-tenant metrics, latency histograms, violation alerts |
+| Logging | structlog (JSON) | Structured logs with tenant_id, mandate_id context |
+
+### Production Async Flow
+
+```
+Razorpay subscription.payment.failed
+        |
+        | POST /webhooks/razorpay
+        |   1. Verify HMAC against tenant's razorpay_webhook_secret
+        |   2. Look up tenant by signature match
+        |   3. Enqueue ARQ job (< 5ms)
+        |   4. Return 200 OK
+        v
+Redis job queue
+        |
+        | ARQ worker picks up job
+        v
+process_payment_failed(tenant_id, payload)
+        |   1. Load tenant compliance config from DB (cached 5 min)
+        |   2. Decrypt tenant Razorpay keys
+        |   3. Parse Razorpay payload -> MandateEvent
+        |   4. Run process_single_with_config()
+        |      (Tier-1 -> Gate -> Tier-2 if ambiguous -> Gate -> Execute)
+        |   5. Write RecoveryDecision + AuditLog to DB
+        |   6. POST signed callback to tenant.webhook_url
+        v
+NBFC's system receives { action, compliance_result, hinglish_message, outcome }
+        |
+        | Verifies X-Aegis-Signature header
+        v
+Collections team sees decision in Aegis dashboard
+```
+
+### Additional Database Tables (Phase 9)
+
+#### `tenants`
+
+```sql
+CREATE TABLE tenants (
+  tenant_id                  VARCHAR PRIMARY KEY,        -- e.g. t_abc123
+  name                       VARCHAR(200) NOT NULL UNIQUE,
+  api_key_hash               VARCHAR(64) NOT NULL UNIQUE,   -- SHA-256 of raw key
+  webhook_url                VARCHAR(500),                  -- client callback URL
+  callback_secret            VARCHAR(500),                  -- Fernet-encrypted
+  razorpay_key_id_enc        VARCHAR(500),                  -- Fernet-encrypted
+  razorpay_key_secret_enc    VARCHAR(500),                  -- Fernet-encrypted
+  razorpay_webhook_secret_enc VARCHAR(500),                 -- Fernet-encrypted
+  is_active                  BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at                 TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+```
+
+#### `tenant_compliance_configs`
+
+```sql
+CREATE TABLE tenant_compliance_configs (
+  tenant_id                   VARCHAR PRIMARY KEY REFERENCES tenants(tenant_id),
+  afa_threshold_general       INT NOT NULL DEFAULT 15000,
+  afa_threshold_sip_insurance INT NOT NULL DEFAULT 100000,
+  max_retry_upi_autopay       INT NOT NULL DEFAULT 3,
+  max_retry_enach             INT NOT NULL DEFAULT 2,
+  pre_debit_notice_window_hours INT NOT NULL DEFAULT 24,
+  tier2_budget_per_minute     INT NOT NULL DEFAULT 10,
+  updated_at                  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+-- Row per tenant. Overrides compliance_config.yaml defaults for that tenant.
+-- NPCI-exempt tenants (e.g. SIP-only NBFCs) set afa_threshold_general = 100000.
+```
+
+#### `batch_jobs`
+
+```sql
+CREATE TABLE batch_jobs (
+  job_id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id     VARCHAR NOT NULL REFERENCES tenants(tenant_id),
+  status        VARCHAR(20) NOT NULL DEFAULT 'queued',  -- queued|processing|complete|failed
+  source        VARCHAR(20) NOT NULL DEFAULT 'webhook', -- webhook|csv_upload
+  enqueued_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  started_at    TIMESTAMPTZ,
+  completed_at  TIMESTAMPTZ,
+  record_count  INT,
+  result_payload JSONB,   -- BatchResult.model_dump(); replaces in-memory _batch_cache
+  error         TEXT
+);
+```
+
+#### Existing tables — `tenant_id` column added
+
+```sql
+ALTER TABLE mandate_events      ADD COLUMN tenant_id VARCHAR NOT NULL DEFAULT 'default';
+ALTER TABLE recovery_decisions  ADD COLUMN tenant_id VARCHAR NOT NULL DEFAULT 'default';
+ALTER TABLE audit_log           ADD COLUMN tenant_id VARCHAR NOT NULL DEFAULT 'default';
+ALTER TABLE human_review_queue  ADD COLUMN tenant_id VARCHAR NOT NULL DEFAULT 'default';
+```
+
+### Updated Component Responsibilities (Phase 9)
+
+| Component | Phase 1–8 Responsibility | Phase 9 Addition |
+|---|---|---|
+| Event Ingester | CSV parsing, schema validation | Also parses Razorpay webhook payloads via `_parse_razorpay_webhook()` |
+| Tier-1 Rule Engine | Decline code lookup — no change | Config loaded from per-tenant `ComplianceConfig` object |
+| Tier-2 Groq Agent | Structured output reasoning | Rate-limited per tenant via Redis sliding window; falls back to 8b model or ESCALATE |
+| Compliance Gate | Unconditional rule enforcement | Constructed per-request with per-tenant `ComplianceConfig` |
+| Action Executor | Razorpay API + mock stubs | Razorpay client is per-tenant (injected credentials) |
+| Audit Log | Append-only decision record | `tenant_id` added to every entry |
+| API Layer | FastAPI routes | Auth middleware validates `Authorization: Bearer` per request |
+| Webhook Handler | HMAC validation + inline processing | HMAC + tenant lookup + ARQ enqueue; returns 200 in < 1s |
+| Worker (new) | — | ARQ async worker: dequeues jobs, runs pipeline, sends callback |
+| Callback Service (new) | — | Sends signed `POST` to tenant's `webhook_url` with exponential backoff |
+| Observability (new) | — | Prometheus counters/histograms per tenant; structlog JSON output |
+
+### Prometheus Metrics
+
+| Metric | Type | Labels |
+|---|---|---|
+| `aegis_recovery_actions_total` | Counter | `tenant_id`, `action`, `outcome` |
+| `aegis_compliance_violations_total` | Counter | `tenant_id`, `violation_rule` |
+| `aegis_tier2_calls_total` | Counter | `tenant_id`, `model`, `result` |
+| `aegis_groq_latency_seconds` | Histogram | `tenant_id`, `model` |
+| `aegis_active_jobs` | Gauge | `tenant_id` |
+| `aegis_callback_delivery_total` | Counter | `tenant_id`, `status` |
+
+### Security Model
+
+| Surface | Mechanism |
+|---|---|
+| Dashboard / API calls | `Authorization: Bearer <api_key>` — SHA-256 hashed in DB |
+| Razorpay webhook inbound | HMAC-SHA256 per tenant (`X-Razorpay-Signature`) |
+| Client callback outbound | HMAC-SHA256 (`X-Aegis-Signature`) for client verification |
+| Razorpay keys at rest | Fernet (AES-128-CBC) symmetric encryption; master key in env / Secrets Manager |
+| `/metrics` endpoint | Nginx `allow` restricted to internal network |
+| Audit log | `REVOKE UPDATE, DELETE ON audit_log FROM aegis_app` at DB level |
+
+---
+
+*Source: Master_Aegis.md §10, §12, §13, §17, §19, §20, §21, §26 | Updated: 2026-08-24 (Phase 9 production architecture)*
