@@ -195,6 +195,11 @@ export async function getHumanReview(): Promise<{ total: number; items: HumanRev
   const { data } = await api.get('/api/v1/human-review');
   return data;
 }
+
+export async function resolveHumanReview(reviewId: string): Promise<{ status: string; review_id: string; resolved_at: string }> {
+  const { data } = await api.post(`/api/v1/human-review/${reviewId}/resolve`);
+  return data;
+}
 ```
 
 ### Task 7.3 — Implement `MetricCards.tsx`
@@ -383,6 +388,90 @@ export default function HinglishMessagePreview({ message }: Props) {
   );
 }
 ```
+
+### Task 7.8b — Implement `HumanReviewQueue.tsx`
+
+Renders the escalated human review queue with an inline "Mark as Resolved" button for each item.
+
+```typescript
+// src/components/HumanReviewQueue.tsx
+import { useState, useEffect } from 'react';
+import { getHumanReview, resolveHumanReview } from '../api/aegis';
+import type { HumanReviewItem } from '../types/aegis';
+
+export default function HumanReviewQueue() {
+  const [items, setItems] = useState<HumanReviewItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadQueue = async () => {
+    try {
+      const data = await getHumanReview();
+      setItems(data.items);
+    } catch (e) {
+      console.error('Failed to load human review queue', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadQueue();
+  }, []);
+
+  const handleResolve = async (reviewId: string) => {
+    try {
+      await resolveHumanReview(reviewId);
+      setItems(prev => prev.filter(item => item.review_id !== reviewId));
+    } catch (e) {
+      console.error('Failed to resolve item', e);
+    }
+  };
+
+  if (loading) return <div>Loading review queue...</div>;
+  if (items.length === 0) return <div style={{ color: '#6b7280', padding: 16 }}>No items in human review queue.</div>;
+
+  return (
+    <div style={{ background: '#fff', borderRadius: 8, border: '1px solid #e5e7eb', padding: 16 }}>
+      <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Human Review Queue ({items.length})</h3>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+        <thead>
+          <tr style={{ borderBottom: '1px solid #e5e7eb', textAlign: 'left', color: '#6b7280' }}>
+            <th style={{ padding: '8px 4px' }}>Mandate ID</th>
+            <th style={{ padding: '8px 4px' }}>Reason</th>
+            <th style={{ padding: '8px 4px' }}>Compliance Rule</th>
+            <th style={{ padding: '8px 4px' }}>Created At</th>
+            <th style={{ padding: '8px 4px' }}>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map(item => (
+            <tr key={item.review_id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+              <td style={{ padding: '8px 4px' }}><code>{item.mandate_id.slice(0, 12)}...</code></td>
+              <td style={{ padding: '8px 4px' }}>{item.reason}</td>
+              <td style={{ padding: '8px 4px', color: item.compliance_rule ? '#ef4444' : '#6b7280' }}>
+                {item.compliance_rule || 'N/A'}
+              </td>
+              <td style={{ padding: '8px 4px', color: '#6b7280' }}>{new Date(item.created_at).toLocaleTimeString()}</td>
+              <td style={{ padding: '8px 4px' }}>
+                <button
+                  onClick={() => handleResolve(item.review_id)}
+                  style={{
+                    background: '#3b82f6', color: '#fff', border: 'none',
+                    borderRadius: 4, padding: '4px 8px', fontSize: 12, cursor: 'pointer',
+                  }}
+                >
+                  Mark as Resolved
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+```
+
 
 ### Task 7.9 — Implement `BatchUploader.tsx`
 

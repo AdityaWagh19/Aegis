@@ -133,24 +133,34 @@ def score_atrisk(model: LogisticRegression, event: MandateEvent) -> float:
 
 ---
 
-## Open Questions and Assumptions
+## Resolved Questions and Architectural Decisions
 
-From Master_Aegis.md §32:
+All open questions from Master_Aegis.md §32 are fully resolved:
 
 **Q1 — Held-out set size:**
-Assumption: Generate 500 records; hold out 100 (20%). This gives a statistically meaningful evaluation set for the six categories.
+- **Status: Resolved (Phase 1).**
+- **Decision:** Generate 500 records; deterministically hold out 100 records (20%, seed 42) into `data/synthetic_held_out.csv`. This yields statistically significant evaluation counts across all six decline categories.
+- **Implemented in:** `synthetic/generator.py` (splitting logic) and `plans/phase-1-foundation.md`.
 
 **Q2 — AFA threshold for e-NACH SIPs:**
-**Resolved.** `product_category` field added to `MandateEvent`. AFA threshold is looked up from `compliance_config.yaml` based on this field. If absent, default to `afa_threshold_general`. See `compliance.md` (AFA Threshold Detection — Resolved section) for full detail and the gate implementation.
+- **Status: Resolved (Phase 1 & 3).**
+- **Decision:** `product_category` field (`subscription`, `loan_emi`, `sip`, `insurance`) is added to `MandateEvent`. The compliance gate's `_get_afa_threshold()` dynamically inspects `product_category` and looks up `AFA_THRESHOLD_SIP_INSURANCE` (Rs. 1,00,000) or `AFA_THRESHOLD_GENERAL` (Rs. 15,000) from `compliance_config.yaml`.
+- **Implemented in:** `models/mandate_event.py`, `core/compliance_gate.py`, and `config/loader.py`.
 
 **Q3 — Hinglish message visibility:**
-Assumption: Show Hinglish message preview for any case where the LLM drafted one, regardless of whether `SEND_HINGLISH_NUDGE` was the final action. This makes the Tier-2 reasoning visible even when the compliance gate changes the action.
+- **Status: Resolved (Phase 5 & 7).**
+- **Decision:** The dashboard displays the drafted Hinglish message preview in `MandateDetailDrawer` for any event where Tier-2 generated one, regardless of whether the final executed action was modified by the compliance gate.
+- **Implemented in:** `core/orchestrator.py` (preserving `hinglish_message` on `RecoveryDecision`), `models/recovery_decision.py`, and `dashboard/src/components/HinglishMessagePreview.tsx`.
 
 **Q4 — Human review queue resolution:**
-Assumption: A "Mark as Resolved" button on the human review queue row is sufficient for MVP. No workflow, no assignment, no audit trail of who resolved it. Post-MVP: add `resolved_by` field and resolution notes.
+- **Status: Resolved (Phase 6 & 7).**
+- **Decision:** Dedicated `POST /api/v1/human-review/{review_id}/resolve` endpoint updates the `resolved_at` timestamp in `human_review_queue`. `HumanReviewQueue.tsx` surfaces a "Mark as Resolved" action button that optimistic-removes the row upon success.
+- **Implemented in:** `models/db.py` (`HumanReviewQueueORM`), `api/routes/human_review.py`, and `dashboard/src/components/HumanReviewQueue.tsx`.
 
-**Q5 — Batch upload format:**
-Assumption: CSV is the primary interface (simpler for the demo upload flow). JSON batch endpoint (`POST /api/v1/recovery/batch` with `Content-Type: application/json`) is secondary and can be added post-MVP.
+**Q5 — Batch upload and intake format:**
+- **Status: Resolved (Phase 6 & 9).**
+- **Decision:** Multipart CSV upload via `POST /api/v1/recovery/batch` serves as the primary demo/batch interface. Single-event webhook ingestion via `POST /webhooks/razorpay` (with async Redis/ARQ workers in Phase 9) handles real-time asynchronous mandate processing.
+- **Implemented in:** `api/routes/recovery.py`, `api/routes/webhooks.py`, and `workers/mandate_worker.py`.
 
 ---
 

@@ -16,6 +16,7 @@ All endpoints are prefixed with `/api/v1/`. The frontend API client (`dashboard/
 | GET | `/api/v1/metrics` | Summary metrics (recovery rate, tier split, violations) |
 | GET | `/api/v1/audit` | Paginated audit log |
 | GET | `/api/v1/human-review` | Human review queue |
+| POST | `/api/v1/human-review/{review_id}/resolve` | Mark human review item as resolved |
 | POST | `/webhooks/razorpay` | Receive Razorpay subscription webhook events |
 
 ---
@@ -210,6 +211,24 @@ is_revocable, attempt_number, timestamp
       "resolved_by": null
     }
   ]
+}
+```
+
+---
+
+### `POST /api/v1/human-review/{review_id}/resolve`
+
+**Description:** Marks an escalated human review queue item as resolved.
+
+**Path Parameters:**
+- `review_id` (string, UUID): The review item ID to resolve.
+
+**Response `200 OK`:**
+```json
+{
+  "status": "resolved",
+  "review_id": "uuid",
+  "resolved_at": "2026-08-24T12:00:00Z"
 }
 ```
 

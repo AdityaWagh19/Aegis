@@ -353,6 +353,24 @@ async def get_human_review():
             for item in items
         ],
     }
+
+
+@router.post("/human-review/{review_id}/resolve")
+async def resolve_human_review(review_id: str):
+    """Mark a human review queue item as resolved."""
+    from datetime import datetime, timezone
+    from fastapi import HTTPException
+
+    async with AsyncSessionLocal() as db:
+        stmt = select(HumanReviewQueueORM).where(HumanReviewQueueORM.review_id == review_id)
+        item = (await db.execute(stmt)).scalars().first()
+        if not item:
+            raise HTTPException(status_code=404, detail=f"Review item '{review_id}' not found.")
+
+        item.resolved_at = datetime.now(timezone.utc)
+        await db.commit()
+
+    return {"status": "resolved", "review_id": review_id, "resolved_at": item.resolved_at.isoformat()}
 ```
 
 ### Task 6.7 — Implement `api/routes/webhooks.py`

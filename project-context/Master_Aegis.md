@@ -2044,17 +2044,17 @@ jobs:
 
 ---
 
-## 32. Open Questions
+## 32. Resolved Questions and Architectural Decisions
 
-1. **Held-out set size:** The PRD says 20% held-out. For a 500-record dataset, that's 100 records. For a 1,000-record dataset, that's 200. **Assumption:** Generate 500 records; hold out 100 (20%).
+1. **Held-out set size:** **Resolved (Phase 1).** Generate 500 records; hold out 100 records (20%, seed 42) into `data/synthetic_held_out.csv` to provide statistically significant validation sets across all six decline categories.
 
-2. **AFA threshold for e-NACH SIPs:** The PRD cites Rs. 1,00,000 for SIPs and insurance. Should this be detected from the mandate_type or a separate field? **Assumption:** Add a `product_category` field to MandateEvent (values: "subscription", "loan_emi", "sip", "insurance"); AFA threshold varies by category.
+2. **AFA threshold for e-NACH SIPs:** **Resolved (Phase 1 & 3).** Added `product_category` field to `MandateEvent` (`subscription`, `loan_emi`, `sip`, `insurance`). The compliance gate inspects `product_category` and maps to `AFA_THRESHOLD_SIP_INSURANCE` (Rs. 1,00,000) or `AFA_THRESHOLD_GENERAL` (Rs. 15,000) from `compliance_config.yaml`.
 
-3. **Hinglish message channel:** The mock stub logs to a file. Should the dashboard show the message content for all cases, or only for cases where SEND_HINGLISH_NUDGE is the final action? **Assumption:** Show Hinglish message preview for any case where Claude drafted one, regardless of whether it was the final action.
+3. **Hinglish message visibility:** **Resolved (Phase 5 & 7).** `RecoveryDecision` retains `hinglish_message` and the dashboard renders `HinglishMessagePreview` within `MandateDetailDrawer` for any Tier-2 generated message, regardless of whether the compliance gate modified the final action.
 
-4. **Human review queue resolution:** Is there a UI for a human to mark a review item as "resolved"? **Assumption:** Yes — a simple "Mark as Resolved" button on the human review queue row. No workflow beyond that for MVP.
+4. **Human review queue resolution:** **Resolved (Phase 6 & 7).** `POST /api/v1/human-review/{review_id}/resolve` endpoint updates the `resolved_at` timestamp in DB, triggered directly from the "Mark as Resolved" button in `HumanReviewQueue.tsx`.
 
-5. **Batch upload format:** CSV with headers matching the MandateEvent schema, or a Razorpay-webhook-style JSON format? **Assumption:** CSV is the primary interface (simpler for the demo upload flow); JSON batch endpoint is secondary.
+5. **Batch upload format:** **Resolved (Phase 6 & 9).** Multipart CSV upload (`POST /api/v1/recovery/batch`) serves as the primary demo/batch interface; webhook ingestion (`POST /webhooks/razorpay`) with Redis/ARQ async worker pool provides real-time single-event processing.
 
 ---
 
