@@ -146,6 +146,40 @@
 
 ---
 
+## Phase 2 Execution — Aug 24 (same day, third session)
+
+### Built
+
+- `core/tier1_engine.py` — deterministic rule engine per plans/phase-2-tier1-rule-engine.md Task 2.1: all six taxonomy codes, contextual overrides (high-bounce escalation, late-cycle ambiguity, AFA borderline band, ENACH/UPI retry caps), unknown-code safety net. Zero LLM imports.
+- `tests/unit/test_tier1.py` — 17 tests covering every rule, edge case, and the no-LLM invariant (Task 2.2)
+- `scripts/measure_tier1.py` — resolution-rate and latency measurement over the 500-record synthetic batch (Task 2.3)
+- `.env` created with validated Groq/Razorpay test credentials; Groq model IDs replaced with live-catalog equivalents (`openai/gpt-oss-120b`, `openai/gpt-oss-20b`) after discovering the plan's pinned models no longer exist on Groq
+
+### Failures and Fixes
+
+- **`Tier1Result.action: str` rejected `None`** — Phase 2's D2 requires `action=None` for ambiguous cases, but the Phase 1 Pydantic model declared `action: str`. Fixed by widening to `Optional[str] = None` in `models/recovery_decision.py`. One-line type change, required to unblock the engine.
+- **`test_tier1_has_no_llm_imports` false positive** — the plan's substring scan flagged the word "groq" inside tier1_engine's own docstring ("must never import from ... groq ..."). Plan's two files contradicted each other. Fixed by switching the test to AST-based import extraction (`ast.walk` → Import/ImportFrom nodes) — stronger enforcement, no comment/docstring false positives.
+- **`mock.patch("core.tier2_agent")` raised ModuleNotFoundError** — module doesn't exist until Phase 4. Added `create=True` so the invariant test passes now and remains valid once Phase 4 lands; also added `assert_not_called()` from test.md's version.
+- **`python scripts/measure_tier1.py` ModuleNotFoundError** — direct script invocation doesn't put repo root on sys.path. Added a two-line `sys.path` bootstrap so the plan's documented invocation works.
+
+### Decisions Made
+
+- Resolution rate measured at **83.8%**, above the 60–80% acceptance window. The phase plan's risk table explicitly deems >80% "acceptable — but check that ambiguous routing logic is not suppressed". Ran a reason-level breakdown: all three dataset-reachable ambiguous branches fire (late_cycle_insufficient_funds=72, afa_below_threshold_inconsistency=8, borderline_afa=1; total 81 = exact ambiguous count). `unknown_decline_code` is unreachable in synthetic data (generator emits only known codes) and is covered by unit tests. Rules were NOT tuned to move the number.
+- Measurement runs on all 500 rows of data/synthetic.csv per the plan's script (held-out rows included in this dev-time metric only; held-out set itself untouched).
+
+### Metrics
+
+- `pytest tests/unit/test_tier1.py -v`: **17 passed**, 0 failures
+- Import check: `import core.tier1_engine` → no LLM imports
+- Resolution: **419/500 resolved (83.8%)**, 81 ambiguous (16.2%) → well within the ≤30% Tier-2 ceiling (P1)
+- Latency: 500 sequential classify() calls in ~1.2ms total → P95 per record ≈ 0.00ms (< 5ms target)
+
+### Tomorrow
+
+- Execute Phase 3: compliance gate (`core/compliance_gate.py`) + its critical unit suite
+
+---
+
 ## Day 3 — Aug 25
 
 ### Built

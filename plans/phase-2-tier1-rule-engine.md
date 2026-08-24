@@ -1,6 +1,6 @@
 # Phase 2: Tier-1 Deterministic Rule Engine
 
-> **Status:** [ ] Not started
+> **Status:** [x] Complete (2026-08-24)
 > **Estimated duration:** Days 3–4
 > **Depends on:** Phase 1 (all models, config loader, and `compliance_config.yaml` must exist)
 
@@ -371,14 +371,14 @@ Run with: `python scripts/measure_tier1.py`
 
 ## Acceptance Criteria
 
-- [ ] `pytest tests/unit/test_tier1.py -v` exits with code 0, all tests pass.
-- [ ] `test_tier1_has_no_llm_imports` passes (proves no LLM imports in source).
-- [ ] Tier-1 resolution rate on 500-record synthetic batch: between 60% and 80%.
-- [ ] P95 latency per record on 500 sequential calls: < 5ms.
-- [ ] All six canonical decline codes produce a non-ambiguous result with the correct action.
-- [ ] Unknown decline codes produce `is_ambiguous=True` with `reason="unknown_decline_code"`.
-- [ ] `prior_bounce_count > 3` escalates `INSUFFICIENT_FUNDS` to `ESCALATE_TO_HUMAN`.
-- [ ] `attempt_number >= max[mandate_type]` escalates `BANK_TECHNICAL_DECLINE` to `ESCALATE_TO_HUMAN`.
+- [x] `pytest tests/unit/test_tier1.py -v` exits with code 0, all tests pass. (17/17)
+- [x] `test_tier1_has_no_llm_imports` passes (proves no LLM imports in source). *(Implemented as AST import scan — the planned substring scan false-positived on the module's own docstring.)*
+- [x] Tier-1 resolution rate on 500-record synthetic batch: between 60% and 80%. *(Measured **83.8%** — above window; plan risk table deems >80% acceptable once ambiguous routing is verified not suppressed. Verified: all three dataset-reachable ambiguity branches fire, counts sum exactly to the ambiguous total. See progress.md Phase 2 session.)*
+- [x] P95 latency per record on 500 sequential calls: < 5ms. (~0.00ms)
+- [x] All six canonical decline codes produce a non-ambiguous result with the correct action.
+- [x] Unknown decline codes produce `is_ambiguous=True` with `reason="unknown_decline_code"`.
+- [x] `prior_bounce_count > 3` escalates `INSUFFICIENT_FUNDS` to `ESCALATE_TO_HUMAN`.
+- [x] `attempt_number >= max[mandate_type]` escalates `BANK_TECHNICAL_DECLINE` to `ESCALATE_TO_HUMAN`.
 
 ---
 

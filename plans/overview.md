@@ -94,7 +94,7 @@ Mark phase status using the following states in this document:
 ### Current Status
 
 - [x] Phase 1: Foundation
-- [ ] Phase 2: Tier-1 Rule Engine
+- [x] Phase 2: Tier-1 Rule Engine
 - [ ] Phase 3: Compliance Gate
 - [ ] Phase 4: Tier-2 Groq Agent
 - [ ] Phase 5: Action Executor + Audit

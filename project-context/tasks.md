@@ -65,23 +65,25 @@
 
 ## Phase 2 — Tier-1 Rule Engine (Days 3–4: Aug 25–26)
 
-- [ ] `core/tier1_engine.py` — `classify(event, config) -> Tier1Result`
-  - [ ] `INSUFFICIENT_FUNDS` (high-bounce escalation when `prior_bounce_count > 3`, i.e., 4 or more bounces)
-  - [ ] `AFA_REQUIRED` (clear: amount > threshold; borderline: within 10% → ambiguous)
-  - [ ] `MANDATE_PAUSED` → `SEND_HINGLISH_NUDGE`
-  - [ ] `BANK_TECHNICAL_DECLINE` (attempt < max → `RETRY_AFTER_BACKOFF`; at max → ambiguous)
-  - [ ] `NON_REVOCABLE_HARD_DECLINE` → `ESCALATE_TO_HUMAN` (never ambiguous)
-  - [ ] `MANDATE_EXPIRED` → `SEND_MANDATE_RENEWAL_LINK`
-  - [ ] Unknown decline code → `is_ambiguous=True, reason="unknown_decline_code"`
-- [ ] Verify: zero LLM imports in `core/tier1_engine.py`
-- [ ] `tests/unit/test_tier1.py` — all 10+ test cases from `test.md`
-- [ ] `test_tier1_makes_no_llm_calls` — mock patch confirms zero LLM calls
+- [x] `core/tier1_engine.py` — `classify(event, config) -> Tier1Result`
+  - [x] `INSUFFICIENT_FUNDS` (high-bounce escalation when `prior_bounce_count > 3`, i.e., 4 or more bounces)
+  - [x] `AFA_REQUIRED` (clear: amount > threshold; borderline: within 10% → ambiguous)
+  - [x] `MANDATE_PAUSED` → `SEND_HINGLISH_NUDGE`
+  - [x] `BANK_TECHNICAL_DECLINE` (attempt < max → `RETRY_AFTER_BACKOFF`; at max → ambiguous→escalate per plan Task 2.1: at-max returns `ESCALATE_TO_HUMAN`)
+  - [x] `NON_REVOCABLE_HARD_DECLINE` → `ESCALATE_TO_HUMAN` (never ambiguous)
+  - [x] `MANDATE_EXPIRED` → `SEND_MANDATE_RENEWAL_LINK`
+  - [x] Unknown decline code → `is_ambiguous=True, reason="unknown_decline_code"`
+- [x] Verify: zero LLM imports in `core/tier1_engine.py` (AST import scan in test suite + manual import check)
+- [x] `tests/unit/test_tier1.py` — all 10+ test cases from `test.md` (17 tests total)
+- [x] `test_tier1_makes_no_llm_calls` — mock patch confirms zero LLM calls
 
 ### Phase 2 Acceptance Criteria
 
-- [ ] All `test_tier1.py` tests pass
-- [ ] Tier-1 latency P95 < 5ms on 500 records
-- [ ] Tier-1 resolves 60–80% of generated dataset
+> Authoritative criteria: plans/phase-2-tier1-rule-engine.md §Acceptance Criteria — satisfied there (2026-08-24). Resolution rate note below.
+
+- [x] All `test_tier1.py` tests pass (17/17)
+- [x] Tier-1 latency P95 < 5ms on 500 records (~0.00ms; 500 records in ~1.2ms total)
+- [x] Tier-1 resolves 60–80% of generated dataset *(measured 83.8% — above window; plan risk table deems >80% acceptable once ambiguity routing is verified not suppressed. Verified: late_cycle_insufficient_funds=72, afa_below_threshold_inconsistency=8, borderline_afa_threshold=1 fire on synthetic data; unknown_decline_code covered by unit tests. See progress.md.)*
 
 ---
 
