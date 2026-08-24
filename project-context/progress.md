@@ -121,6 +121,7 @@
 ### Failures and Fixes
 
 - **`audit_log.entry_id` autoincrement broken on SQLite** — `BigInteger` primary keys are not rowid aliases in SQLite, so inserts without explicit `entry_id` failed with `NOT NULL constraint failed`. Caught proactively by an insert test before any Phase 5 code exists. Fixed with `BigInteger().with_variant(Integer, "sqlite")` (BIGINT preserved on PostgreSQL, INTEGER rowid alias on SQLite). Re-tested: auto-generated ids `[1, 2]`.
+- **Held-out set overwritten by a validation re-run of the generator** — re-running `python -m synthetic.generator` after the lock commit rewrote `data/synthetic_held_out.csv`: `random.seed(42)` makes category draws deterministic, but event `timestamp` uses wall-clock `datetime.now()`, so regenerated files are never byte-identical. Caught via `git status` showing the file modified; fixed by `git restore data/synthetic_held_out.csv` (committed version is authoritative). Lesson recorded: the generator must NOT be run again now that the held-out set is locked; if regeneration is ever required, derive timestamps from the seeded RNG first and re-lock.
 - Docker is not installed on the build machine — `docker compose config` could not run locally. Compose file validated via YAML parse + structural assertions instead; must re-validate on the EC2 target.
 
 ### Decisions Made
