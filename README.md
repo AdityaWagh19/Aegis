@@ -2,7 +2,7 @@
 
 # Aegis
 
-<img src="Aegis.jpg" alt="Aegis Platform" width="700" />
+<img src="Aegis.jpg" alt="Aegis Platform" width="400" />
 
 **Compliant UPI Autopay and e-NACH Failure Diagnosis and Recovery Agent**
 
