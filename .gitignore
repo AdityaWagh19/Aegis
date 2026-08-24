@@ -1,0 +1,17 @@
+.env
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+node_modules/
+dashboard/dist/
+dashboard/.next/
+*.egg-info/
+.venv/
+venv/
+.DS_Store
+*.db
+data/synthetic.csv
+*.log
+notification_log.jsonl

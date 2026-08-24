@@ -1,0 +1,21 @@
+# compliance_config.yaml
+# Committed to repository. No secrets. Thresholds only.
+# All compliance gate checks read from this file via config/loader.py.
+
+afa_threshold_general: 15000
+afa_threshold_sip_insurance: 100000
+
+max_retry_attempts:
+  UPI_AUTOPAY: 3
+  ENACH: 2
+
+pre_debit_notice_window_hours: 24
+
+# Synthetic data generation distribution
+synthetic_distribution:
+  INSUFFICIENT_FUNDS: 0.40
+  BANK_TECHNICAL_DECLINE: 0.20
+  MANDATE_PAUSED: 0.15
+  AFA_REQUIRED: 0.10
+  MANDATE_EXPIRED: 0.10
+  NON_REVOCABLE_HARD_DECLINE: 0.05
