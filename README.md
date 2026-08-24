@@ -297,7 +297,3 @@ Aegis deploys to a single EC2 instance (t3.micro, upgradeable to t3.medium) in *
 | [`project-context/design.md`](project-context/design.md) | Design system tokens, components, and voice guidelines |
 
 ---
-
-## License
-
-MIT License — see [`LICENSE`](LICENSE) for details.
