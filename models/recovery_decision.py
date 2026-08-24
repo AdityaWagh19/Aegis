@@ -11,7 +11,7 @@ class ComplianceResult(BaseModel):
 
 
 class Tier1Result(BaseModel):
-    action: str
+    action: Optional[str] = None   # None when is_ambiguous=True — case routes to Tier-2
     is_ambiguous: bool
     reason: str
     tier: Literal[1] = 1
