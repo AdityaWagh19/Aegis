@@ -90,6 +90,8 @@ jobs:
           key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
           script: |
             cd /home/ubuntu/Aegis
+            # nginx (www-data) needs traverse access to reach dashboard/dist
+            chmod o+x /home/ubuntu || true
             if [ -f alembic.ini ]; then docker compose run --rm api alembic upgrade head; fi
             docker compose up --build -d
             sudo systemctl reload nginx
@@ -101,7 +103,7 @@ jobs:
           aws configure set region ap-south-1
           RULE_IDS=$(aws ec2 describe-security-group-rules \
             --filters "Name=group-id,Values=sg-0a3f917df67b9698c" \
-            --query "SecurityGroupRules[?CidrIpv4=='${RUNNER_IP}/32' && FromPort==22].SecurityGroupRuleId" \
+            --query "SecurityGroupRules[?CidrIpv4=='${RUNNER_IP}/32' && FromPort==\`22\`].SecurityGroupRuleId" \
             --output text)
           for id in $RULE_IDS; do
             aws ec2 revoke-security-group-ingress \
