@@ -308,6 +308,44 @@
 
 ---
 
+## Phase 7 Execution — Aug 24 (same day, ninth session)
+
+### Built
+
+- Complete `dashboard/` React 18 + TypeScript app on Vite 8 + Tailwind v4, styled exclusively with design-system tokens (`src/styles/theme.css` = schema tokens + sanctioned status extensions; pixel-named spacing steps override TW defaults — use only defined steps)
+- Router: `/` Landing · `/docs` Docs · `/login` Login · `/app` Overview · `/app/batch` Batches · `/app/audit` Audit trail; three layouts (Marketing/Auth/AppShell) with demo AuthGuard + sign out
+- All 9 core components per spec: MetricCards (ink values + semantic context lines), TierSplitChart (soot+sky-wash donut with printed counts), RecoveryByCategoryTable, MandateList (tier/outcome badges, ⚠ flags, keyboard rows), MandateDetailDrawer (proposal→gate→final flow, confidence bar, alternatives chips, Razorpay JSON collapse), ComplianceOverrideCard (warning tint, struck proposal, cited rule), HinglishMessagePreview, HumanReviewQueue (resolve wired), BatchUploader (3 states, honest timing copy)
+- Landing with real product copy (no lorem ipsum): hero + single highlight span, floating preview mock with working tab pills, how-it-works trio, six failure categories grid, compliance promise block, soot footer
+- Docs page: anchor sidebar; compliance rules table; CSV column dictionary; all seven endpoints with curl examples; allow-list grid
+- Login: email/passphrase form + guest path, inline validation hints, plain disclosure that auth is a local demo gate until Phase 9
+- lib/format.ts (en-IN rupees, humanized actions/outcomes); lib/auth.ts (localStorage session)
+
+### Failures and Fixes
+
+- **create-vite template shipped broken TS config** — no `"jsx"` compilerOption → every JSX file errored. Fixed tsconfig.json (`jsx: react-jsx`, strict, DOM.Iterable).
+- **Template omitted react/react-dom/@types entirely** — recharts had pulled react@19 transitively. Installed react@18 + react-dom@18 + @types/react@18 per plan's React-18 decision.
+- **npm optional-deps bug (rolldown native binding)** — `@rolldown/binding-win32-x64-msvc` skipped on install; clean reinstall didn't help. Installed the binding explicitly.
+- **Same for @vitejs/plugin-react** — absent from template deps AND latest 4.x peers vite ≤7 while template installed vite 8; resolved by installing @vitejs/plugin-react@6 (peers vite ^8).
+
+### Decisions Made
+
+- Dashboard Overview deliberately does NOT render rupee totals: the all-time /metrics endpoint carries counts, not rupees — fabricating numbers in UI would violate honesty-first. Rupee MetricCards appear only on Batches view where real batch data exists.
+- MandateList drops the planned "Decline Code" column: RecoveryDecision objects carry no decline_code field; showing "(see detail)" filler was worse than an honest column cut. Codes remain visible via drawer rationale and audit rows.
+- Chart palette kept strictly monochrome (soot/sky-wash slices) per design system; outcome semantics live in badges only.
+
+### Metrics
+
+- `npm run build`: ✓ type-check + bundle green (~5s; one chunk-size warning from recharts — acceptable for demo)
+- Dev server: all six routes HTTP 200
+- Live integration through the exact API path the UI drives: upload demo_10.csv → 202 (10 records, tier1=8/tier2=2, violations caught=6/executed=0) → poll 200 → human-review 5 items
+- Full backend regression untouched: 52/52 tests still passing
+
+### Tomorrow
+
+- One manual browser QA pass over the six routes (the only open AC items), then Phase 8 evaluation
+
+---
+
 ## Phase 6 Execution — Aug 24 (same day, seventh session)
 
 ### Built

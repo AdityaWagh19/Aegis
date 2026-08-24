@@ -180,35 +180,32 @@
 
 > **Revised scope (2026-08-24):** design system adopted per `project-context/design.md` — Tailwind v4 tokens, 6 routes across Marketing/Auth/App layouts, demo auth gate. See `plans/phase-7-dashboard.md`.
 
-- [ ] Design-system setup: `theme.css` into `src/styles/`, status-token extensions, Fontsource Inter + Inter Tight, Tailwind v4 Vite plugin
-- [ ] React app initialized in `dashboard/` (Vite + TS + react-router-dom)
-- [ ] Layouts: `MarketingLayout`, `AuthLayout`, `AppShell` (+ `AuthGuard` via `lib/auth.ts`)
-- [ ] Landing page `/` — hero + highlight span, floating preview, how-it-works trio, six-category grid, compliance promise, footer
-- [ ] Docs page `/docs` — anchor sidebar, architecture/compliance/CSV/API-reference content, curl examples for all endpoints
-- [ ] Login page `/login` — demo auth gate (localStorage session), honest Phase 9 note, guest path
-- [ ] `dashboard/src/api/aegis.ts` — typed client for all endpoints
-- [ ] `lib/format.ts` — rupee en-IN / dates / humanizeAction
-- [ ] `components/MetricCards.tsx` — Rs. recovered, recovery %, violations (ink values + semantic context lines)
-- [ ] `components/TierSplitChart.tsx` — Tier-1 vs Tier-2 donut (Recharts, monochrome palette)
-- [ ] `components/RecoveryByCategoryTable.tsx` — per-category recovery rate
-- [ ] `components/MandateList.tsx` — mandate table with tier badges + outcome badges
-- [ ] `components/MandateDetailDrawer.tsx` — full decision trail on click
-- [ ] `components/ComplianceOverrideCard.tsx` — THE demo-critical component (warning-tint treatment, shown before list)
-- [ ] `components/HinglishMessagePreview.tsx` — message preview card
-- [ ] `components/HumanReviewQueue.tsx` — escalated mandates with resolve action
-- [ ] `components/BatchUploader.tsx` — CSV drag-and-drop (react-dropzone) with three batch states
-- [ ] App pages: `app/Dashboard.tsx`, `app/Batch.tsx`, `app/Audit.tsx`
-- [ ] Manual end-to-end test: login → upload demo CSV → all components render → sign out; console clean
+- [x] Design-system setup: `theme.css` into `src/styles/`, status-token extensions, Fontsource Inter + Inter Tight, Tailwind v4 Vite plugin
+- [x] React app initialized in `dashboard/` (Vite + TS + react-router-dom + react@18)
+- [x] Layouts: `MarketingLayout`, `AuthLayout`, `AppShell` (+ `AuthGuard` via `lib/auth.ts`)
+- [x] Landing page `/` — hero + highlight span, floating preview with tab switcher, how-it-works trio, six-category grid, compliance promise, inverted footer
+- [x] Docs page `/docs` — anchor sidebar, architecture/compliance/CSV dictionary/API reference with curl examples
+- [x] Login page `/login` — demo auth gate (localStorage session), honest Phase 9 note, guest path
+- [x] `dashboard/src/api/aegis.ts` — typed client for all endpoints
+- [x] `lib/format.ts` — rupee en-IN / dates / humanizeAction / outcome tones
+- [x] `components/MetricCards.tsx` — Rs. recovered, at risk, recovery rate, violations (ink values + semantic context lines)
+- [x] `components/TierSplitChart.tsx` — Tier-1 vs Tier-2 donut (Recharts, soot+sky-wash monochrome palette, printed counts)
+- [x] `components/RecoveryByCategoryTable.tsx` — per-category recovery rate
+- [x] `components/MandateList.tsx` — mandate table with tier badges, outcome badges, violation ⚠ flag, keyboard-accessible rows
+- [x] `components/MandateDetailDrawer.tsx` — full decision trail: tier/outcome/confidence bar, proposal→gate→final flow, alternatives chips, Razorpay JSON collapse
+- [x] `components/ComplianceOverrideCard.tsx` — THE demo-critical component (warning-tint, struck proposal, cited rule, shown before list)
+- [x] `components/HinglishMessagePreview.tsx` — draft preview card with mock-notification caption
+- [x] `components/HumanReviewQueue.tsx` — escalated mandates with resolve action + empty/loading/error states
+- [x] `components/BatchUploader.tsx` — CSV drag-and-drop with three batch states + honest timing copy
+- [x] App pages: `app/Dashboard.tsx`, `app/Batch.tsx` (empty/processing/results states), `app/Audit.tsx` (pagination + filter)
+- [ ] Manual end-to-end test in browser: login → upload demo CSV → all components render → sign out; console clean *(awaiting one manual browser pass — regenerate data via `head -11 data/synthetic.csv > data/demo_10.csv`)*
 
 ### Phase 7 Acceptance Criteria
 
-> Authoritative criteria: plans/phase-7-dashboard.md §Acceptance Criteria (revised).
+> Authoritative criteria: plans/phase-7-dashboard.md §Acceptance Criteria. Programmatic criteria satisfied (build green, all routes serve 200, API chain verified live); five purely visual items pending the single manual browser pass above.
 
-- [ ] Dashboard at `http://localhost:3000`, no console errors
-- [ ] All six routes render with token-only styling
-- [ ] Auth gate redirects unauthenticated `/app/*` → `/login`
-- [ ] `ComplianceOverrideCard` shows correct override data for non-revocable case
-- [ ] Hinglish message visible for at least one `MANDATE_PAUSED` case
+- [x] Build/dev-server/tooling criteria — see phase plan for itemised evidence
+- [ ] Visual render criteria (MetricCards/TierSplitChart/OverrideCard/Hinglish preview/Audit rendering + console cleanliness) — one browser pass required
 
 ---
 

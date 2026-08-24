@@ -1,0 +1,23 @@
+/* Entry stylesheet — import order matters: fonts first, then design tokens
+   (Tailwind v4 @theme), then Tailwind itself. */
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource-variable/inter-tight';
+
+@import './theme.css';
+@import 'tailwindcss';
+
+body {
+  font-family: var(--font-inter);
+  background-color: var(--color-stone-canvas);
+  color: var(--color-ink-black);
+  font-size: 14px;
+  line-height: 1.64;
+  letter-spacing: 0.004em;
+  -webkit-font-smoothing: antialiased;
+}
+
+code, pre {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
