@@ -52,22 +52,23 @@ jobs:
           npm ci
           npm run build
 
+      - name: Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
       - name: Copy files to EC2 via rsync
-        uses: burnett01/rsync-deployments@7.0.1
-        with:
-          switches: >
-            -avzr --delete
-            --exclude='.env'
-            --exclude='node_modules'
-            --exclude='__pycache__'
-            --exclude='.venv'
-            --exclude='data/synthetic.csv'
-            --exclude='data/synthetic_held_out.csv'
-          path: ./
-          remote_path: /home/ubuntu/Aegis
-          remote_host: ${{ secrets.EC2_HOST }}
-          remote_user: ${{ secrets.EC2_USERNAME }}
-          remote_key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+        run: |
+          rsync -avzr --delete \
+            --exclude='.env' \
+            --exclude='node_modules' \
+            --exclude='__pycache__' \
+            --exclude='.venv' \
+            --exclude='data/synthetic.csv' \
+            --exclude='data/synthetic_held_out.csv' \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
+            ./ ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:/home/ubuntu/Aegis/
 
       - name: Deploy on EC2
         uses: appleboy/ssh-action@v1.0.3
