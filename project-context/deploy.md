@@ -1,6 +1,13 @@
 # Deployment Guide — Aegis
 
 > **Status:** Reference | Read on Day 1 for initial EC2 setup. Revisit on Day 12 for final production deploy.
+>
+> **Update 2026-08-24 — deployed.** Live at `http://13.206.245.70` (ap-south-1). Deviations from this doc, all recorded in progress.md:
+> - `.env` DATABASE_URL must use **`postgresql+asyncpg://`** (plain `postgresql://` crashes SQLAlchemy's async engine).
+> - Groq model IDs are `openai/gpt-oss-120b` / `openai/gpt-oss-20b` (original Llama/mixtral IDs no longer exist on Groq).
+> - Instance is t3.micro (AWS free plan blocks t3.medium until billing upgrade).
+> - CI opens port 22 to the runner IP per-deploy via IAM user `aegis-ci` (scoped to the Aegis SG), auto-revoked post-deploy; human SSH stays restricted to the owner IP.
+> - SSL/certbot deferred until a domain name exists; nginx serves via Elastic IP meanwhile.
 
 ---
 

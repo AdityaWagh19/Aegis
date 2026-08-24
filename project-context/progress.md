@@ -346,6 +346,47 @@
 
 ---
 
+## Deployment Session — Aug 24 (same day, tenth session)
+
+### Built
+
+- **AWS infra (ap-south-1, Mumbai):** EC2 `i-0872d3ec8eb93ea9e` (Ubuntu 22.04 jammy, t3.micro) with Elastic IP `13.206.245.70`; SG `aegis-sg` (22 → owner IP only; 80/443 public); key pair `aegis-key` (pem at ~/.ssh, never committed); cloud-init user-data installed docker.io + docker-compose-plugin + nginx + certbot and created `/home/ubuntu/Aegis`
+- **Repo:** `Dockerfile` (python:3.12-slim, uvicorn), `.dockerignore`, `.github/workflows/deploy.yml` — push to main runs unit+gate+integration tests, builds dashboard with Node 20, rsyncs (excluding .env / held-out set / synthetic.csv), then `docker compose up --build -d`
+- **CI security pattern:** IAM user `aegis-ci` (policy scoped to only the Aegis SG's ingress toggle) temporarily whitelists each runner IP on port 22 and auto-revokes after deploy — human SSH stays locked to my IP per deploy.md
+- Server-side: nginx site config from deploy.md Step 2 (server_name = Elastic IP); production `.env` written directly on instance (chmod 600) with real keys + asyncpg DB URL
+
+### Failures and Fixes
+
+- **First launch landed in us-west-2** — a pre-existing `AWS_REGION=us-west-2` env var overrode `aws configure`. Terminated instance, released EIP, deleted SG/keypair, recreated everything with explicit `--region ap-south-1`.
+- **PEM mangled to one line** by `--output text` collapsing newlines → ssh "invalid format". Fixed by re-inserting 64-char line breaks.
+- **t3.medium rejected** — account is on the AWS free plan (blocks paid types). Launched t3.micro instead; resize path documented.
+- **CI run #1 EBADPLATFORM** — my local win32 rolldown binding had leaked into package.json via --save; removed it, restored locally with `--no-save`.
+- **CI run #2** — root-level `.gitignore` pattern `theme.css` also ignored `dashboard/src/styles/theme.css`, so CI couldn't build tokens; anchored ignores to repo root (`/theme.css`) and tracked the dashboard copy.
+- **CI run #3** — `burnett01/rsync-deployments@7.0.1` broken on current runners; replaced with plain rsync over SSH.
+- **CI run #4 timeout on port 22** — expected: SG allows owner IP only. Built the IAM-scoped temporary-whitelist pattern.
+- **CI runs #5/#6 IAM gaps** — needed sg-rule-level resource + CreateTags; solved by granting rule resources AND dropping tags in favour of CIDR matching.
+- **Dashboard 500 through nginx** — www-data couldn't traverse `/home/ubuntu`; fixed with `chmod o+x /home/ubuntu` (made durable inside the workflow deploy script).
+
+### Decisions Made
+
+- t3.micro now + resize-later path instead of billing upgrade mid-build.
+- CI uses a least-privilege IAM user rather than storing root credentials or opening SSH globally.
+- SSL deferred until a domain exists (certbot installed; nginx ready for certbot --nginx).
+
+### Metrics
+
+- Final pipeline: **green end-to-end in ~65s** (tests → build → rsync → compose up)
+- Live: `/` 200 · `/api/v1/metrics` 200 via nginx · unsigned webhook 403 · containers api+db Up (db healthy)
+- Post-run SG audit: port 22 restricted to owner IP only (stale runner rule from failed run revoked manually)
+
+### Tomorrow
+
+- Razorpay test Plan + Subscription creation (dashboard UI step)
+- Domain purchase → certbot SSL → ALLOWED_ORIGINS/APP_HOST update
+- Phase 8 evaluation on held-out set
+
+---
+
 ## Phase 6 Execution — Aug 24 (same day, seventh session)
 
 ### Built

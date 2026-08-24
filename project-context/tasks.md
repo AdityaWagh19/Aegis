@@ -42,15 +42,15 @@
 
 ### EC2 Setup
 
-> Deployment-track tasks requiring AWS account access; not part of the local Phase 1 code deliverables in plans/phase-1-foundation.md. Needed before the Day 12 production deploy (see project-context/deploy.md).
-
-- [ ] EC2 instance launched (Ubuntu 22.04, t3.medium), Elastic IP assigned
-- [ ] Security groups open: ports 22, 80, 443
-- [ ] Docker + Docker Compose + Nginx + certbot installed
-- [ ] `/home/ubuntu/Aegis/.env` created with all real values
-- [ ] Nginx config created and enabled; SSL via certbot
-- [ ] Razorpay test Plan + Subscription created for charge simulator
-- [ ] GitHub repo secrets: `EC2_HOST`, `EC2_SSH_PRIVATE_KEY`, `EC2_USERNAME`
+- [x] EC2 instance launched (Ubuntu 22.04, **t3.micro** — account is on AWS free plan which blocks t3.medium; resize later via stop → change type → start), Elastic IP assigned (**13.206.245.70**, ap-south-1)
+- [x] Security groups open: ports 22 (owner IP only), 80, 443
+- [x] Docker + Docker Compose + Nginx + certbot installed (cloud-init user-data)
+- [x] `/home/ubuntu/Aegis/.env` created with all real values (chmod 600; asyncpg DB URL)
+- [x] Nginx config created and enabled (`sites-available/aegis`, server_name = Elastic IP); SSL via certbot pending domain purchase (certbot installed and ready)
+- [ ] Razorpay test Plan + Subscription created for charge simulator *(manual step in Razorpay dashboard)*
+- [x] GitHub repo secrets: `EC2_HOST`, `EC2_SSH_PRIVATE_KEY`, `EC2_USERNAME` (+ scoped `AWS_ACCESS_KEY_ID_CI` / `AWS_SECRET_ACCESS_KEY_CI` for the IAM user `aegis-ci` that toggles temporary SSH rules per deploy)
+- [x] GitHub Actions pipeline live: push to main → tests → dashboard build → rsync → docker compose up (first green run 32715992524)
+- [x] Live verification: `/` 200 · `/api/v1/metrics` 200 through nginx · unsigned webhook 403
 
 ### Phase 1 Acceptance Criteria
 
