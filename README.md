@@ -1,81 +1,118 @@
 # Aegis
 
-**Compliant UPI Autopay / e-NACH Failure Diagnosis and Recovery Agent**
+**Compliant UPI Autopay & e-NACH Failure Diagnosis and Recovery Agent**
 
-Indian subscription businesses and NBFCs lose 10–20% of recurring revenue to UPI Autopay and e-NACH mandate failures. The failure modes are structurally Indian — they involve NPCI mandate mechanics, RBI notice rules, and salary-cycle timing that no global dunning tool (Stripe Smart Retries, Churnkey, Butter Payments) has ever modeled.
+Indian subscription businesses and Non-Banking Financial Companies (NBFCs) lose 10–20% of recurring revenue to mandate execution failures across UPI Autopay and e-NACH rails. These failure modes are structural to the Indian payments ecosystem: they involve NPCI mandate mechanics, RBI pre-debit notification constraints, AFA thresholds, and salary-cycle timing that global dunning tools (Stripe Smart Retries, Churnkey, Butter Payments) do not support.
 
-Aegis is a two-tier agent that ingests a batch of failed mandates, diagnoses each one by root cause, selects a legally compliant recovery action, executes it against Razorpay's test-mode APIs, and reports honest recovery metrics — with a deterministic compliance gate that cannot be bypassed by any LLM output.
+Aegis is a bolt-on Sidecar and batch recovery system that diagnoses mandate failures by root cause, selects legally compliant recovery actions, executes them via payment gateway APIs (e.g. Razorpay test/live modes), and guarantees zero regulatory violations through an unconditional, deterministic compliance gate.
 
 ---
 
-## How It Works
+## Core Architecture
+
+Aegis operates in two primary integration modes:
+1. **Sidecar Integration (Model A - Event-Driven Webhooks):** Ingests real-time `payment.failed` webhook events from payment gateways (Razorpay), enqueues them into an asynchronous Redis/ARQ worker pool, executes actions, and delivers HMAC-signed callbacks to NBFC core banking/subscription systems.
+2. **Batch Processing Mode:** Ingests multipart CSV uploads (50–500+ records) through FastAPI endpoints, running them through the synchronized two-tier reasoning and compliance pipeline.
 
 ```mermaid
 flowchart TD
-    A["CSV Batch\n50–200 failed mandate events"] -->|POST /api/v1/recovery/batch| B["Event Ingester\nCSV parse + Pydantic validation"]
-    B --> C{"Tier-1\nDeterministic Rule Engine"}
-    C -->|"65–75% resolved · < 5ms/record"| D["Compliance Gate"]
-    C -->|"25–35% ambiguous"| E["Tier-2 · Groq llama-3.3-70b\nStructured JSON only · Fixed allow-list"]
-    E --> D
-    D -->|"Unconditional: AFA · 24h notice · non-revocable"| F{"Approved?"}
-    F -->|Yes| G["Action Executor\nRazorpay test-mode APIs"]
-    F -->|"No — violation logged"| H["Escalate to Human"]
-    G --> I["Append-Only Audit Log"]
-    H --> I
-    I --> J["Dashboard\nRs. recovered / at risk · Tier split · Violations"]
+    subgraph INGESTION["1. Ingestion Layer"]
+        WH["Gateway Webhook\nPOST /webhooks/razorpay"] -->|HMAC Verification| ARQ["Redis / ARQ Worker Queue"]
+        CSV["CSV Batch Upload\nPOST /api/v1/recovery/batch"] -->|Pydantic Parser| ORCH["Pipeline Orchestrator"]
+        ARQ --> ORCH
+    end
+
+    subgraph REASONING["2. Two-Tier Decision Engine"]
+        ORCH --> T1{"Tier-1 Rule Engine\nDeterministic Lookup"}
+        T1 -->|"60–80% resolved · < 5ms P95"| GATE["Compliance Gate"]
+        T1 -->|"20–40% ambiguous"| T2["Tier-2 Reasoning Agent\nGroq llama-3.3-70b-versatile"]
+        T2 -->|"Structured JSON Tool Call"| GATE
+    end
+
+    subgraph COMPLIANCE["3. Unconditional Compliance Gate"]
+        GATE --> R1{"Rule 1: Non-Revocable EMI"}
+        GATE --> R2{"Rule 2: Max Retries (UPI: 3, NACH: 2)"}
+        GATE --> R3{"Rule 3: AFA Threshold (General: Rs.15k, SIP/Ins: Rs.1L)"}
+        GATE --> R4{"Rule 4: RBI 24h Pre-Debit Notice"}
+    end
+
+    subgraph EXECUTION["4. Execution & Audit"]
+        R1 & R2 & R3 & R4 -->|Approved / Redirected Action| EXEC["Action Executor\nGateway API / Intent Push / SMS"]
+        R1 & R2 & R3 & R4 -->|Hard Violation Blocked| ESC["Human Review Queue"]
+        EXEC --> AUDIT["Append-Only Audit Log\nImmutable Storage"]
+        ESC --> AUDIT
+        AUDIT --> CB["Outbound Client Callback\nHMAC-Signed Webhook"]
+        AUDIT --> DASH["Real-Time Dashboard\nMetrics · Overrides · Audit Trail"]
+    end
 ```
 
 ---
 
-## The Six Failure Categories
+## Failure Taxonomy & Recovery Strategy
 
-The taxonomy is the intellectual core of the product. Every Tier-1 rule, every Tier-2 prompt, and every compliance rule derives from this table.
+The failure taxonomy forms the foundation of Aegis. Every Tier-1 rule, Tier-2 prompt, and compliance check maps to these six categories:
 
-| Decline Code | Root Cause | Correct Action | Why Global Tools Fail |
+| Decline Code | Root Cause | Recovery Action | Why Global Tools Fail in India |
 |---|---|---|---|
-| `INSUFFICIENT_FUNDS` | Debit before salary credit | `SCHEDULE_POST_SALARY` | Card retries assume funds are immediately available |
-| `AFA_REQUIRED` | Silent debit above NPCI Rs. 15,000 threshold | `SEND_UPI_INTENT_PUSH` | Card rails have no equivalent concept |
-| `MANDATE_PAUSED` | Customer paused via RBI 24h pre-debit notice | `SEND_HINGLISH_NUDGE` | No global equivalent; the pause is a legal right |
-| `BANK_TECHNICAL_DECLINE` | Bank timeout / downtime | `RETRY_AFTER_BACKOFF` | Identical on card rails — this one global tools handle correctly |
-| `NON_REVOCABLE_HARD_DECLINE` | Loan EMI, 2nd hard decline | `ESCALATE_TO_HUMAN` | Card-rail assumption: always retry |
-| `MANDATE_EXPIRED` | e-mandate validity window lapsed | `SEND_MANDATE_RENEWAL_LINK` | Card tokens don't expire the same way |
+| `INSUFFICIENT_FUNDS` | Debit attempted before customer salary credit | `SCHEDULE_POST_SALARY` | Standard card retry algorithms retry immediately or on exponential backoff, failing before monthly salary credit dates (typically 1st–5th). |
+| `AFA_REQUIRED` | Silent recurring debit exceeds NPCI AFA threshold | `SEND_UPI_INTENT_PUSH` | Global tools attempt silent gateway retries; NPCI rules mandate explicit customer authentication above ₹15,000 (₹1,00,000 for SIPs/Insurance). |
+| `MANDATE_PAUSED` | Customer paused mandate after RBI 24h pre-debit notice | `SEND_HINGLISH_NUDGE` | Pausing is a statutory right under RBI regulations. Auto-retrying a paused mandate violates compliance. Requires customer engagement/loss-aversion nudging. |
+| `BANK_TECHNICAL_DECLINE` | Transient issuing bank downtime or switch timeout | `RETRY_AFTER_BACKOFF` | Handled via progressive retry backoff schedules aligned with NPCI clearing windows. |
+| `NON_REVOCABLE_HARD_DECLINE` | Non-revocable mandate (Loan EMI) second hard bounce | `ESCALATE_TO_HUMAN` | Auto-retrying non-revocable loans after hard declines incurs illegal bounce penalties on borrowers and violates RBI fair recovery guidelines. |
+| `MANDATE_EXPIRED` | e-Mandate validity period expired or invalid UPI ID | `SEND_MANDATE_RENEWAL_LINK` | Mandate tokens expire under NPCI circulars; card tokens do not expire identically. Requires digital mandate re-registration link. |
 
 ---
 
-## Compliance Gate
+## The Compliance Gate
 
-The compliance gate is an unconditional code path — not a feature, not configurable, not bypassable by any LLM output. Every proposed action from Tier-1 or Tier-2 passes through it before execution.
+The compliance gate is an unconditional, deterministic, pure software gate. It sits strictly between the reasoning zone and the execution zone. No LLM output can bypass or modify gate decisions.
 
 ```mermaid
 flowchart LR
     subgraph REASONING["Reasoning Zone"]
-        T1["Tier-1\nDeterministic Rules"]
-        T2["Tier-2\nGroq LLM"]
+        T1["Tier-1 Deterministic Rules"]
+        T2["Tier-2 Groq LLM"]
     end
-    subgraph GATE["Compliance Gate — Unconditional"]
-        R1["Non-Revocable\nHard Decline"]
-        R2["Max Retry\nAttempts Cap"]
-        R3["AFA Threshold\nRouting"]
-        R4["24h Pre-Debit\nNotice Active"]
+    subgraph GATE["Compliance Gate (Pure Function)"]
+        CG1["Non-Revocable Hard Decline Filter"]
+        CG2["Max Retries Cap Enforcement"]
+        CG3["Dynamic AFA Threshold Redirection"]
+        CG4["24h Notice Protection Filter"]
     end
-    subgraph EXEC["Execution Zone"]
-        AX["Action Executor\nRazorpay Test-Mode"]
-        AL["Audit Log\nAppend-Only"]
+    subgraph EXECUTION["Execution Zone"]
+        AX["Action Executor"]
+        AL["Append-Only Audit Log"]
+        HR["Human Review Queue"]
     end
 
-    T1 -->|"proposed action"| GATE
-    T2 -->|"proposed action"| GATE
-    GATE -->|"approved action only"| EXEC
+    T1 -->|Proposed Action| GATE
+    T2 -->|Proposed Action| GATE
+    GATE -->|Approved Final Action| AX
+    GATE -->|Blocked / Overridden Action| HR
+    AX --> AL
+    HR --> AL
 ```
 
-| Rule | Trigger | Gate Behaviour |
-|---|---|---|
-| Non-revocable hard decline | `is_revocable=False` AND `NON_REVOCABLE_HARD_DECLINE` | Only `ESCALATE_TO_HUMAN` permitted — zero exceptions |
-| Max retry cap | `attempt_number >= max[mandate_type]` (UPI: 3, NACH: 2) | Reject any retry action |
-| AFA threshold routing | `amount > Rs. 15,000` AND retry proposed | Redirect to `SEND_UPI_INTENT_PUSH` — silent retry violates NPCI |
-| 24h pre-debit notice | `MANDATE_PAUSED` AND retry proposed | Reject retry — pausing is a legal customer right under RBI rules |
+### Enforced Rules
 
-The gate is a pure function (same inputs, same output always) with unit tests for every rule in isolation. Every violation it catches is logged in the audit trail.
+1. **Non-Revocable Mandates (Rule 1):** If `is_revocable = False` and `decline_code = NON_REVOCABLE_HARD_DECLINE`, any proposed retry is blocked and forced to `ESCALATE_TO_HUMAN`.
+2. **Maximum Retry Attempts Cap (Rule 2):** If `attempt_number >= max_retry_attempts` (`UPI_AUTOPAY: 3`, `ENACH: 2`), all retry actions are blocked and escalated to human review.
+3. **AFA Threshold Routing (Rule 3):** If mandate `amount > afa_threshold` (`₹15,000` general, `₹1,00,000` for SIP/Insurance via `product_category`), any silent retry is automatically redirected to `SEND_UPI_INTENT_PUSH`.
+4. **24-Hour Pre-Debit Notice Enforcement (Rule 4):** If `decline_code = MANDATE_PAUSED`, auto-retries are rejected and redirected to `SEND_HINGLISH_NUDGE`.
+
+---
+
+## Multi-Tenancy & Sidecar Architecture
+
+For production deployments (Phase 9), Aegis provides a multi-tenant sidecar architecture:
+
+* **Per-Tenant Configuration:** Every NBFC/Fintech tenant configures custom AFA thresholds, retry caps, and Groq rate limit quotas.
+* **Key Encryption:** Sensitive credentials (`razorpay_key_id`, `razorpay_key_secret`, `callback_secret`, `razorpay_webhook_secret`) are encrypted at rest with Fernet (AES-128-CBC + HMAC-SHA256).
+* **API Authentication:** Inbound REST API requests are authenticated via `Authorization: Bearer <api_key>` (SHA-256 hashed lookup).
+* **Asynchronous Webhook Queue:** Webhook requests return `200 OK` in < 1 second. Processing executes in ARQ async workers via Redis.
+* **Signed Outbound Callbacks:** Decision payloads sent to tenant webhook endpoints carry `X-Aegis-Signature` (`HMAC-SHA256(payload, callback_secret)`).
+* **Rate Limiting & Downgrade:** Redis sliding-window limiter tracks Tier-2 Groq usage per tenant, gracefully falling back to `llama-3.1-8b-instant` or deterministic rules when rate budgets are exhausted.
+* **Observability:** Prometheus metrics exported at `/metrics` with per-tenant labels for actions, compliance violations, and LLM latencies.
 
 ---
 
@@ -83,140 +120,144 @@ The gate is a pure function (same inputs, same output always) with unit tests fo
 
 ```
 Aegis/
-├── core/
-│   ├── tier1_engine.py        Deterministic rule engine — zero LLM imports
-│   ├── tier2_agent.py         Groq reasoning agent — structured output only
-│   ├── compliance_gate.py     Unconditional compliance enforcement
-│   └── action_executor.py     Razorpay API + mock notification dispatch
 ├── api/
-│   └── routes/                recovery, mandates, metrics, audit, human-review, webhooks
-├── models/                    Pydantic + SQLAlchemy schemas
-├── synthetic/                 Generator, held-out split, held-out evaluator
+│   ├── main.py                     FastAPI application, CORS, lifespan handler
+│   ├── middleware/
+│   │   └── auth.py                 Tenant API key authentication middleware
+│   └── routes/
+│       ├── recovery.py             Batch CSV upload and polling endpoints
+│       ├── mandates.py             Single mandate audit lookup
+│       ├── metrics.py              Aggregated operational & recovery metrics
+│       ├── audit.py                Paginated append-only audit trail
+│       ├── human_review.py         Escalation queue and resolution routes
+│       └── webhooks.py             Razorpay webhook receiver & HMAC validation
+├── core/
+│   ├── tier1_engine.py             Deterministic rule engine (< 5ms P95, 0 LLM calls)
+│   ├── tier2_agent.py              Groq llama-3.3-70b-versatile structured reasoning
+│   ├── tier2_rate_limiter.py       Redis sliding-window rate limiter per tenant
+│   ├── compliance_gate.py          Deterministic NPCI/RBI compliance enforcement
+│   ├── action_executor.py          Razorpay client & notification dispatcher
+│   └── orchestrator.py             Batch and single-event pipeline orchestrator
+├── models/
+│   ├── mandate_event.py            Pydantic input models & validation
+│   ├── recovery_decision.py        Decision schemas, results & batch metrics
+│   ├── tenant.py                   Multi-tenancy models, crypto & schemas
+│   └── db.py                       SQLAlchemy async ORM definitions
+├── services/
+│   ├── groq_client.py              Async singleton Groq client
+│   ├── razorpay_client.py          Async wrapper for Subscriptions & Payment Links
+│   ├── mock_notification.py        WhatsApp / SMS notification mock logger
+│   └── callback_service.py         HMAC-signed outbound callback dispatcher
+├── workers/
+│   ├── arq_settings.py             Redis connection & worker settings
+│   └── mandate_worker.py           ARQ async background worker job definitions
+├── observability/
+│   ├── metrics.py                  Prometheus metric definitions & counters
+│   └── logging.py                  Structured JSON logging (structlog)
+├── synthetic/
+│   ├── generator.py                Synthetic dataset generator (500 records)
+│   └── evaluator.py                Held-out evaluation harness (100 locked records)
+├── dashboard/                      React 18 + Vite + TypeScript web interface
 ├── tests/
-│   ├── unit/                  test_tier1.py, test_compliance_gate.py, test_tier2_schema.py
-│   └── integration/           test_batch_pipeline.py
-├── dashboard/                 React 18 + TypeScript frontend
-├── project-context/           All project documentation
-├── compliance_config.yaml     AFA thresholds, retry caps (committed)
-└── .env.example               Environment variable template
+│   ├── unit/                       Unit tests for Tier-1, Compliance Gate, Tier-2, Auth
+│   └── integration/                Full batch and multi-tenant pipeline tests
+├── plans/                          Engineering specification (Phases 1 through 9)
+├── project-context/                Context, architecture, compliance, and API docs
+├── compliance_config.yaml          Default compliance parameters and distributions
+├── docker-compose.yml              Multi-service deployment (API, Worker, Postgres, Redis)
+└── requirements.txt                Python dependency specifications
 ```
 
 ---
 
 ## Quick Start
 
-**Prerequisites:** Python 3.12+, Node.js 20+, [Groq API key (free)](https://console.groq.com), Razorpay test-mode account.
+### Prerequisites
+* Python 3.10+ (Python 3.12 recommended)
+* Node.js 20+
+* Redis (for async queue & rate limiting)
+* [Groq API Key](https://console.groq.com)
+* Razorpay Test Account
+
+### Installation
 
 ```bash
-# 1. Clone and install
+# 1. Clone the repository
 git clone https://github.com/AdityaWagh19/Aegis.git
 cd Aegis
+
+# 2. Set up Python virtual environment
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-# 2. Configure environment
+# 3. Configure environment
 cp .env.example .env
-# Set GROQ_API_KEY, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET in .env
+# Fill in GROQ_API_KEY, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, and AEGIS_MASTER_ENCRYPTION_KEY
 
-# 3. Generate synthetic data — do this before writing any rules
+# 4. Generate locked synthetic dataset and held-out evaluation set
 python -m synthetic.generator --count 500 --output data/synthetic.csv --held-out-pct 0.2
 
-# 4. Run the backend
+# 5. Start backend API
 uvicorn api.main:app --reload --port 8000
 
-# 5. Run the dashboard
-cd dashboard && npm install && npm run dev
-# http://localhost:3000
+# 6. Start async worker (in separate terminal)
+python -m arq workers.mandate_worker.WorkerSettings
 
-# 6. Run tests
-pytest tests/unit/ -v
-pytest tests/unit/test_compliance_gate.py -v    # critical — run separately
+# 7. Start dashboard frontend
+cd dashboard
+npm install
+npm run dev
+# Dashboard running at http://localhost:3000
 ```
 
 ---
 
-## API
+## REST API Reference
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `POST` | `/api/v1/recovery/batch` | Upload CSV batch of failed mandates |
-| `GET` | `/api/v1/recovery/batch/{id}` | Poll batch processing results |
-| `GET` | `/api/v1/mandates/{id}` | Full decision trail for a single mandate |
-| `GET` | `/api/v1/metrics` | Recovery rate, tier split, violations caught/executed |
-| `GET` | `/api/v1/audit` | Paginated append-only audit log |
-| `GET` | `/api/v1/human-review` | Human review queue |
-| `POST` | `/webhooks/razorpay` | Razorpay subscription lifecycle events |
+| `POST` | `/api/v1/recovery/batch` | Upload CSV batch of failed mandate events |
+| `GET` | `/api/v1/recovery/batch/{batch_id}` | Poll batch processing result and metrics |
+| `GET` | `/api/v1/mandates/{mandate_id}` | Retrieve full audit trail for a mandate |
+| `GET` | `/api/v1/metrics` | Retrieve operational metrics across all decisions |
+| `GET` | `/api/v1/audit` | Paginated append-only immutable audit log |
+| `GET` | `/api/v1/human-review` | List unresolved human review queue items |
+| `POST` | `/api/v1/human-review/{review_id}/resolve` | Mark a human review queue item as resolved |
+| `POST` | `/webhooks/razorpay` | Ingest Razorpay lifecycle events (HMAC-verified) |
+| `GET` | `/metrics` | Prometheus observability metrics endpoint |
 
-Full request/response schemas: [`project-context/api.md`](project-context/api.md)
-
----
-
-## Configuration
-
-```yaml
-# compliance_config.yaml — committed, no secrets
-afa_threshold_general: 15000         # INR — NPCI general rule
-afa_threshold_sip_insurance: 100000  # INR — NPCI SIP/insurance rule
-
-max_retry_attempts:
-  UPI_AUTOPAY: 3
-  ENACH: 2
-
-pre_debit_notice_window_hours: 24
-```
-
-Key environment variables (see `.env.example`):
-
-| Variable | Purpose |
-|---|---|
-| `GROQ_API_KEY` | Tier-2 LLM (free tier handles demo scale comfortably) |
-| `GROQ_MODEL_TIER2` | `llama-3.3-70b-versatile` |
-| `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` | Test-mode only (`rzp_test_*`) |
-| `DATABASE_URL` | SQLite for dev, PostgreSQL for production |
+Full request/response schemas and examples: [`project-context/api.md`](project-context/api.md)
 
 ---
 
-## Success Metrics
+## Target Success Metrics
 
-All metrics are reported on the held-out test set (20% of synthetic data, reserved before any rule-writing began).
+Evaluated on the locked held-out test dataset (100 records generated before rule implementation):
 
-| Metric | Target |
-|---|---|
-| Tier-1 resolution rate | 65–75% |
-| Compliance violations executed | **0** (hard requirement) |
-| Compliance violations caught | > 0 (proves the gate works) |
-| False escalation rate | < 15% |
-| Tier-1 latency P95 | < 5ms |
-| Tier-2 latency P95 | < 3,000ms |
-
----
-
-## Design Decisions
-
-**Majority-deterministic architecture.** ~65–75% of cases are resolved by the Tier-1 rule engine with zero LLM calls. This is a deliberate design choice: using an LLM for cases that have a provably correct deterministic answer is slower, less auditable, and harder to test. The Tier-1 resolution rate is tracked on the dashboard — if it drops below 65%, the rule engine needs improvement, not more LLM calls.
-
-**Compliance gate as a structural constraint.** The gate is not a validation layer inside the pipeline — it is a structural separation between the reasoning zone and the execution zone. Nothing downstream reads the `proposed_action` directly. Only `compliance_result.final_action` reaches the executor. This makes it architecturally impossible to accidentally bypass the gate.
-
-**Pydantic-enforced action allow-list.** Tier-2's output schema uses a `Literal` type over `ALLOWED_ACTIONS`. Any response from the LLM containing an action outside this enum fails Pydantic validation and falls back to `ESCALATE_TO_HUMAN`. The LLM cannot invent a new action at runtime.
-
-**Groq over Anthropic.** Free API tier, OpenAI-compatible interface, sub-second P95 latency on `llama-3.3-70b-versatile`. A 200-record demo batch generates 50–70 Tier-2 calls — well within free-tier rate limits.
+| Metric | Target | Description |
+|---|---|---|
+| **Compliance Violations Executed** | **0** | Absolute requirement: Zero illegal retries or threshold breaches executed. |
+| **Compliance Violations Caught** | **> 0** | Confirms compliance gate intercepts and overrides invalid proposals. |
+| **Tier-1 Resolution Rate** | **60% – 80%** | Proportion of records resolved deterministically without LLM calls. |
+| **False Escalation Rate** | **< 15%** | Preventable escalations sent to manual review. |
+| **Tier-1 Latency (P95)** | **< 5ms** | Deterministic rule engine execution time per event. |
+| **Tier-2 Latency (P95)** | **< 3,000ms** | Groq structured inference latency. |
 
 ---
 
-## Documentation
+## Documentation Index
 
-| Document | Purpose |
-|---|---|
-| [`context.md`](project-context/context.md) | Problem, personas, taxonomy, goals, glossary |
-| [`compliance.md`](project-context/compliance.md) | All four compliance rules, gate implementation |
-| [`architecture.md`](project-context/architecture.md) | DB schema, state machines, performance targets |
-| [`api.md`](project-context/api.md) | REST endpoints, Razorpay integrations |
-| [`dev-guide.md`](project-context/dev-guide.md) | Local setup, stack, env vars, code conventions |
-| [`test.md`](project-context/test.md) | All test cases, held-out evaluation protocol |
-| [`deploy.md`](project-context/deploy.md) | EC2, Nginx, Docker Compose, GitHub Actions CI/CD |
-| [`demo.md`](project-context/demo.md) | 5-minute demo script, pre-demo checklist |
-| [`tasks.md`](project-context/tasks.md) | Day-by-day build checklist |
-| [`progress.md`](project-context/progress.md) | Daily build log → `BUILD_LOG.md` at submission |
+* [`project-context/context.md`](project-context/context.md) — Problem statement, personas, and domain glossary.
+* [`project-context/compliance.md`](project-context/compliance.md) — NPCI/RBI compliance rules, AFA detection, and gate specifications.
+* [`project-context/architecture.md`](project-context/architecture.md) — Database schemas, state machines, and Sidecar model.
+* [`project-context/api.md`](project-context/api.md) — Complete REST API contracts and webhook payloads.
+* [`project-context/dev-guide.md`](project-context/dev-guide.md) — Development environment setup, conventions, and dependencies.
+* [`project-context/test.md`](project-context/test.md) — Test plan, compliance test matrix, and evaluation protocol.
+* [`project-context/deploy.md`](project-context/deploy.md) — Production deployment with Docker Compose, Nginx, and EC2.
+* [`project-context/tasks.md`](project-context/tasks.md) — Living task list mapping to the 9-phase engineering plan.
+* [`plans/overview.md`](plans/overview.md) — High-level phase dependency map and build rationale.
 
 ---
 
-*Aegis — Compliant UPI Autopay / e-NACH Failure Diagnosis and Recovery Agent*
+*Aegis — Built for compliant recurring payment recovery across Indian digital payment rails.*
