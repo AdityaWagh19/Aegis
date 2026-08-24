@@ -96,9 +96,52 @@
 
 ### Tomorrow
 
-- Execute Phase 1: project skeleton, Pydantic models, DB schema, SQLite setup
-- Generate synthetic dataset (500 records) and lock held-out set before writing any Tier-1 rules
-- Create `.gitignore`, `.env.example`, `compliance_config.yaml`, `requirements.txt`
+- Execute Phase 2: Tier-1 rule engine (`core/tier1_engine.py`) against the locked held-out set
+- Target: Tier-1 resolves 60–80% of generated dataset, P95 < 5ms
+- Full `tests/unit/test_tier1.py` suite from `project-context/test.md`
+
+---
+
+## Phase 1 Execution — Aug 24 (same day, second session)
+
+### Built
+
+- Full Phase 1 foundation per `plans/phase-1-foundation.md`:
+  - Directory skeleton with `__init__.py` in all 11 packages (`api/`, `api/routes/`, `core/`, `services/`, `audit/`, `models/`, `config/`, `synthetic/`, `tests/`, `tests/unit/`, `tests/integration/`)
+  - `requirements.txt` (15 pinned deps), `.gitignore`, `.env.example`, `compliance_config.yaml`, `docker-compose.yml`
+  - `config/loader.py` — Pydantic v2 `ComplianceConfig` + cached `load_config()` / FastAPI `get_config()` dependency
+  - `models/mandate_event.py` — canonical `MandateEvent` input schema (UUID-on-empty mandate_id, optional `correct_action` ground-truth field per D2)
+  - `models/recovery_decision.py` — `ComplianceResult`, `Tier1Result`, `Tier2Result`, `RecoveryDecision`, `BatchMetrics`, `BatchResult`, `EvaluationResult`
+  - `models/db.py` — async SQLAlchemy ORM (`mandate_events`, `recovery_decisions`, `audit_log`, `human_review_queue`) + `init_db()`
+  - `synthetic/generator.py` — seeded (42) generator, distribution mirroring config, internal held-out split
+  - `synthetic/evaluator.py` — `load_held_out_events()` + `evaluate_held_out_set()` skeleton (Phase 8)
+- Synthetic data generated and **held-out set locked before any rule-writing**: commit `7cea696` ("data: generate and lock held-out evaluation set")
+- Python 3.12.1 venv at `.venv/`; all pinned requirements installed cleanly
+
+### Failures and Fixes
+
+- **`audit_log.entry_id` autoincrement broken on SQLite** — `BigInteger` primary keys are not rowid aliases in SQLite, so inserts without explicit `entry_id` failed with `NOT NULL constraint failed`. Caught proactively by an insert test before any Phase 5 code exists. Fixed with `BigInteger().with_variant(Integer, "sqlite")` (BIGINT preserved on PostgreSQL, INTEGER rowid alias on SQLite). Re-tested: auto-generated ids `[1, 2]`.
+- Docker is not installed on the build machine — `docker compose config` could not run locally. Compose file validated via YAML parse + structural assertions instead; must re-validate on the EC2 target.
+
+### Decisions Made
+
+- Held-out set committed as a standalone commit immediately after generation, so its timestamp precedes any future `core/` commits (risk-table mitigation from the phase plan).
+- tasks.md items that contradict the engineering spec were annotated rather than silently checked: `api/main.py` → Phase 6, Alembic → Phase 9, EC2 → deployment track (`deploy.md`).
+
+### Metrics
+
+- `data/synthetic.csv`: 500 rows, all 14 fields populated; distribution deltas vs targets: INSUFFICIENT_FUNDS −0.014, BANK_TECHNICAL_DECLINE +0.014, MANDATE_PAUSED +0.020, AFA_REQUIRED −0.014, MANDATE_EXPIRED +0.008, NON_REVOCABLE_HARD_DECLINE −0.014 (all within ±5%)
+- `data/synthetic_held_out.csv`: exactly 100 unique records (+1 header = 101 lines); category coverage: IF=47, BTD=18, MP=16, AE=8, AFA=9, NRHD=2
+- All 6 validation steps from the phase plan pass; all 10 acceptance criteria satisfied
+
+### Notes for Next Session
+
+- NON_REVOCABLE_HARD_DECLINE has only 2 held-out records (plan estimated ~5). Seed is locked and data committed — do NOT regenerate. Phase 8 false-escalation metrics will be thin for this category; report honestly.
+- Tier-1 engine must not peek at `correct_action`; evaluator checks `correct_action is not None`.
+
+### Tomorrow
+
+- *(Superseded by Phase 2 tasks above)*
 
 ---
 

@@ -1,6 +1,6 @@
 # Phase 1: Foundation
 
-> **Status:** [ ] Not started
+> **Status:** [x] Complete (2026-08-24)
 > **Estimated duration:** Days 1–2
 > **Depends on:** Nothing — this is the root phase.
 
@@ -658,16 +658,16 @@ After completing all tasks in this phase:
 
 ## Acceptance Criteria
 
-- [ ] All directories and `__init__.py` files exist.
-- [ ] `pip install -r requirements.txt` completes without error.
-- [ ] `compliance_config.yaml` loads successfully via `config/loader.py` and produces a `ComplianceConfig` instance with all expected fields.
-- [ ] All Pydantic models import without error and accept valid test inputs.
-- [ ] `asyncio.run(init_db())` creates all 4 ORM tables in `aegis.db`.
-- [ ] `data/synthetic_held_out.csv` exists, contains exactly 100 rows, and is committed to `main`.
-- [ ] `data/synthetic.csv` contains exactly 500 rows with all required fields populated.
-- [ ] Distribution in `data/synthetic.csv` is within ±5% of targets (check with a count per `decline_code`).
-- [ ] `.env.example` exists and documents all required variables.
-- [ ] `docker-compose.yml` is valid (`docker compose config` exits with code 0).
+- [x] All directories and `__init__.py` files exist.
+- [x] `pip install -r requirements.txt` completes without error.
+- [x] `compliance_config.yaml` loads successfully via `config/loader.py` and produces a `ComplianceConfig` instance with all expected fields.
+- [x] All Pydantic models import without error and accept valid test inputs.
+- [x] `asyncio.run(init_db())` creates all 4 ORM tables in `aegis.db`.
+- [x] `data/synthetic_held_out.csv` exists, contains exactly 100 rows, and is committed to `main`.
+- [x] `data/synthetic.csv` contains exactly 500 rows with all required fields populated.
+- [x] Distribution in `data/synthetic.csv` is within ±5% of targets (check with a count per `decline_code`).
+- [x] `.env.example` exists and documents all required variables.
+- [x] `docker-compose.yml` is valid (`docker compose config` exits with code 0). *(Validated via YAML parse + structural assertions; Docker not installed on the build machine — run `docker compose config` on the EC2 deploy target.)*
 
 ---
 

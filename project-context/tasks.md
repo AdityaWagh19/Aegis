@@ -16,31 +16,33 @@
 - [x] First commit pushed to `github.com/AdityaWagh19/Aegis`
 - [x] `project-context/` directory created with all 11 documents
 - [x] `README.md` created and pushed
-- [ ] `.gitignore` created (exclude `.env`, `__pycache__`, `node_modules`, `*.pyc`, `data/held_out*`)
-- [ ] `.env.example` created and committed
-- [ ] `compliance_config.yaml` created and committed
+- [x] `.gitignore` created (excludes `.env`, `__pycache__`, `node_modules`, `*.pyc`, `*.db`, `data/synthetic.csv`; held-out CSV NOT ignored per plans/phase-1-foundation.md Task 1.3)
+- [x] `.env.example` created and committed
+- [x] `compliance_config.yaml` created and committed
 
 ### Backend Skeleton
 
-- [ ] `requirements.txt` (fastapi, uvicorn, groq, razorpay, sqlalchemy, pydantic, pyyaml, faker, pytest, pytest-asyncio, alembic)
-- [ ] `api/main.py` — FastAPI app with health check, CORS, lifespan
-- [ ] `models/mandate_event.py` — Pydantic `MandateEvent` with all fields including `product_category`
-- [ ] `models/recovery_decision.py` — `Tier1Result`, `Tier2Result`, `ComplianceResult`, `RecoveryDecision`, `BatchResult`
-- [ ] `models/db.py` — SQLAlchemy ORM table definitions (mandate_events, recovery_decisions, audit_log, human_review_queue)
-- [ ] `config/loader.py` — `ComplianceConfig` dataclass, `load_config()` loader
-- [ ] Database migrations: `alembic init` + first migration, `init_db.py` script
+- [x] `requirements.txt` (fastapi, uvicorn, groq, razorpay, sqlalchemy, pydantic, pyyaml, faker, pytest, pytest-asyncio + aiosqlite, asyncpg, python-multipart, httpx, python-dotenv per plans/phase-1-foundation.md Task 1.2; alembic deferred to Phase 9 migration work)
+- [ ] `api/main.py` — FastAPI app with health check, CORS, lifespan *(reassigned to Phase 6 per plans/overview.md File Index)*
+- [x] `models/mandate_event.py` — Pydantic `MandateEvent` with all fields including `product_category`
+- [x] `models/recovery_decision.py` — `Tier1Result`, `Tier2Result`, `ComplianceResult`, `RecoveryDecision`, `BatchResult`
+- [x] `models/db.py` — SQLAlchemy ORM table definitions (mandate_events, recovery_decisions, audit_log, human_review_queue) + async engine and `init_db()` script per plans/phase-1-foundation.md Task 1.10
+- [x] `config/loader.py` — `ComplianceConfig` Pydantic model, `load_config()` loader
+- [ ] Database migrations: `alembic init` + first migration *(init_db() covers schema creation for MVP; Alembic introduced in Phase 9 multi-tenancy migration per plans/overview.md)*
 
 ### Synthetic Data (Must complete BEFORE any rule-writing)
 
-- [ ] `synthetic/generator.py` — 500 mandate events with correct distribution:
+- [x] `synthetic/generator.py` — 500 mandate events with correct distribution:
   - INSUFFICIENT_FUNDS: 40%; BANK_TECHNICAL_DECLINE: 20%; MANDATE_PAUSED: 15%
   - AFA_REQUIRED: 10%; MANDATE_EXPIRED: 10%; NON_REVOCABLE_HARD_DECLINE: 5%
-- [ ] `synthetic/held_out.py` — splits and locks held-out set (20% = 100 records)
-- [ ] Generate and commit `data/synthetic_held_out.csv` — **MUST do before Day 3**
-- [ ] `synthetic/evaluator.py` — `evaluate_held_out_set()` function
-- [ ] Verify distribution within 5% tolerance of targets
+- [x] Held-out split+lock logic (implemented inside `generator.py` per plans/phase-1-foundation.md Tasks 1.11/1.13 — no separate `synthetic/held_out.py`)
+- [x] Generate and commit `data/synthetic_held_out.csv` — **done before any rule-writing** (commit 7cea696)
+- [x] `synthetic/evaluator.py` — `evaluate_held_out_set()` function signature (full implementation Phase 8)
+- [x] Verify distribution within 5% tolerance of targets (max observed delta 0.020)
 
 ### EC2 Setup
+
+> Deployment-track tasks requiring AWS account access; not part of the local Phase 1 code deliverables in plans/phase-1-foundation.md. Needed before the Day 12 production deploy (see project-context/deploy.md).
 
 - [ ] EC2 instance launched (Ubuntu 22.04, t3.medium), Elastic IP assigned
 - [ ] Security groups open: ports 22, 80, 443
@@ -52,10 +54,12 @@
 
 ### Phase 1 Acceptance Criteria
 
-- [ ] `pytest tests/unit/test_models.py -v` — all pass
-- [ ] `python -m synthetic.generator` produces 500-row CSV
-- [ ] `data/synthetic_held_out.csv` committed; never modified after this point
-- [ ] `GET /health` returns `{ "status": "ok" }`
+> Authoritative criteria: plans/phase-1-foundation.md §Acceptance Criteria — all 10 satisfied there (2026-08-24). The two items below belong to later-phase deliverables per plans/overview.md.
+
+- [ ] `pytest tests/unit/test_models.py -v` — all pass *(test suite begins Phase 2 per plans/overview.md File Index; models validated via direct instantiation checks in Phase 1)*
+- [x] `python -m synthetic.generator` produces 500-row CSV
+- [x] `data/synthetic_held_out.csv` committed; never modified after this point
+- [ ] `GET /health` returns `{ "status": "ok" }` *(requires api/main.py — Phase 6 deliverable per plans/overview.md File Index)*
 
 ---
 
