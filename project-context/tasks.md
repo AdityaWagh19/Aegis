@@ -109,21 +109,23 @@
 
 ## Phase 4 — Tier-2 Groq Agent (Days 6–7: Aug 28–29)
 
-- [ ] `services/groq_client.py` — lazy singleton `AsyncGroq` client
-- [ ] `core/tier2_agent.py` — `tier2_reason(event, config) -> Tier2Result`
-  - [ ] Groq tool schema: `action` enum, `message_hinglish`, `confidence`, `alternatives_considered`
-  - [ ] `SYSTEM_PROMPT` with taxonomy, allow-list, 3 Hinglish examples
-  - [ ] Single tool call: action + message_hinglish returned together at temperature=0.1 via `propose_recovery_action` tool schema
-  - [ ] `if not choice.message.tool_calls:` guard before indexing (Groq reliability risk)
-  - [ ] Pydantic validation of tool call JSON — rejects out-of-allow-list action
-  - [ ] Fallback on `ValidationError`, `APIError`, timeout → `ESCALATE_TO_HUMAN`
-- [ ] `tests/unit/test_tier2_schema.py` — schema validation, fallback, allow-list enforcement
+- [x] `services/groq_client.py` — lazy singleton `AsyncGroq` client (+ `load_dotenv()` at import so `.env` loads in every entrypoint; + `get_groq_fallback_client()` on `GROQ_API_KEY_FALLBACK`, consumed by Phase 9 rate limiter)
+- [x] `core/tier2_agent.py` — `tier2_reason(event, config) -> Tier2Result` *(signature per plan: `tier2_reason(event)`; config loaded module-level)*
+  - [x] Groq tool schema: `action` enum, `message_hinglish`, `confidence`, `alternatives_considered`
+  - [x] `SYSTEM_PROMPT` with taxonomy, allow-list, 3 Hinglish examples
+  - [x] Single tool call: action + message_hinglish returned together at temperature=0.1 via `propose_recovery_action` tool schema
+  - [x] `if not choice.message.tool_calls:` guard before indexing (Groq reliability risk)
+  - [x] Pydantic validation of tool call JSON — rejects out-of-allow-list action
+  - [x] Fallback on `ValidationError`, `APIError`, timeout → `ESCALATE_TO_HUMAN`
+- [x] `tests/unit/test_tier2_schema.py` — schema validation, fallback, allow-list enforcement (8 tests, no live API calls)
 
 ### Phase 4 Acceptance Criteria
 
-- [ ] All `test_tier2_schema.py` tests pass
-- [ ] `test_pydantic_rejects_out_of_allow_list_action` passes
-- [ ] `test_tier2_fallback_on_malformed_output` passes
+> Authoritative criteria: plans/phase-4-tier2-agent.md §Acceptance Criteria — all satisfied (2026-08-24).
+
+- [x] All `test_tier2_schema.py` tests pass (8/8)
+- [x] `test_pydantic_rejects_out_of_allow_list_action` passes *(as `test_invalid_action_rejected_by_pydantic`, per plans/phase-4 Task 4.5 naming)*
+- [x] `test_tier2_fallback_on_malformed_output` passes *(added from test.md spec — exercises the json.JSONDecodeError branch; brings suite to the stated deliverable count of 8)*
 
 ---
 

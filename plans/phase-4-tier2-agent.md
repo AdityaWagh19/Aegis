@@ -1,6 +1,6 @@
 # Phase 4: Tier-2 Groq Agent
 
-> **Status:** [ ] Not started
+> **Status:** [x] Complete (2026-08-24)
 > **Estimated duration:** Days 6–7
 > **Depends on:** Phase 1 (models, config), Phase 3 (compliance gate must be complete before wiring Tier-2 output through it)
 
@@ -465,13 +465,13 @@ Run with: `python scripts/smoke_test_tier2.py`
 
 ## Acceptance Criteria
 
-- [ ] `pytest tests/unit/test_tier2_schema.py -v` exits with code 0.
-- [ ] `test_invalid_action_rejected_by_pydantic` passes — Pydantic blocks invalid actions.
-- [ ] `test_all_allowed_actions_accepted` passes — all 7 allowed actions are valid `Tier2Result` inputs.
-- [ ] All three fallback tests pass (`no_tool_call`, `invalid_action`, `api_error`).
-- [ ] `python scripts/smoke_test_tier2.py` completes without exception and returns plausible actions.
-- [ ] Hinglish messages in smoke test output are grammatically reasonable and use code-mixing.
-- [ ] Average Groq response latency across 3 smoke test calls is < 3,000ms.
+- [x] `pytest tests/unit/test_tier2_schema.py -v` exits with code 0. (8/8)
+- [x] `test_invalid_action_rejected_by_pydantic` passes — Pydantic blocks invalid actions.
+- [x] `test_all_allowed_actions_accepted` passes — all 7 allowed actions are valid `Tier2Result` inputs.
+- [x] All three fallback tests pass (`no_tool_call`, `invalid_action`, `api_error`). *(Plus `malformed_output` from test.md/tasks.md — json.JSONDecodeError branch.)*
+- [x] `python scripts/smoke_test_tier2.py` completes without exception and returns plausible actions.
+- [x] Hinglish messages in smoke test output are grammatically reasonable and use code-mixing. (Loss-aversion framing observed: "warna subscription ruk jayega!")
+- [x] Average Groq response latency across 3 smoke test calls is < 3,000ms. (**1183ms** avg; 1645/815/1089ms; model openai/gpt-oss-120b)
 
 ---
 

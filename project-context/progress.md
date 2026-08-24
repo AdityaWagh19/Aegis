@@ -209,6 +209,43 @@
 
 ---
 
+## Phase 4 Execution — Aug 24 (same day, fifth session)
+
+### Built
+
+- `services/groq_client.py` — lazy singleton `AsyncGroq`; `load_dotenv()` at module import (nothing loaded `.env` before this); `get_groq_fallback_client()` exposing the second Groq key for later degradation logic
+- `core/tier2_agent.py` — `RECOVER_MANDATE_TOOL` schema, seeded `SYSTEM_PROMPT` (taxonomy + compliance rules + 3 Hinglish examples), async `tier2_reason()` with forced tool choice, no-tool-call guard, Pydantic enforcement, four-branch fallback to `ESCALATE_TO_HUMAN`
+- `tests/unit/test_tier2_schema.py` — 8 tests, fully mocked (no live API)
+- `scripts/smoke_test_tier2.py` — live connectivity/quality check with latency timing
+- Docs synced: `.env.example` (fallback key var, verified model IDs, `sqlite+aiosqlite` default), dev-guide model table rewritten for the live Groq catalog
+
+### Failures and Fixes
+
+- **`APIError(...)` signature mismatch** — plan's test constructed `APIError("Rate limit", response=..., body=...)`, but groq 0.9.0's signature is `APIError(message, request, *, body)`. Fixed test construction with a real `httpx.Request`.
+- **Smoke script duplicate-kwarg TypeError** — plan's Task 4.6 hardcodes `days_since_salary_credit=5` while TEST_CASES[0] also passes it → Python rejects duplicate keyword. Fixed by merging base dict with per-case overrides.
+- **Plan's pinned models dead** — `llama-3.3-70b-versatile` etc. absent from Groq's 2026 catalog (discovered during credential validation earlier today). `.env` and all defaults now use verified `openai/gpt-oss-120b` / `gpt-oss-20b`.
+
+### Decisions Made
+
+- `GROQ_API_KEY_FALLBACK` is exposed via `get_groq_fallback_client()` but deliberately NOT auto-retried inside `tier2_reason()` — that would change the tested AC semantics ("API error → ESCALATE_TO_HUMAN"). Key-level degradation belongs to the Phase 9 Tier-2 rate limiter per plans/overview.md.
+- Added `test_tier2_fallback_on_malformed_output` (from test.md/tasks.md AC) exercising the `json.JSONDecodeError` branch; suite now matches the stated deliverable count of 8.
+- Smoke script measures per-call latency (needed to validate the <3000ms AC).
+
+### Metrics
+
+- `pytest tests/unit/test_tier2_schema.py -v`: **8 passed**, 0 failures (no API calls)
+- Live smoke (primary key, gpt-oss-120b):
+  - INSUFFICIENT_FUNDS late-cycle → SCHEDULE_POST_SALARY, conf 0.95, correct Hinglish
+  - AFA_REQUIRED borderline (Rs. 14,200) → SEND_UPI_INTENT_PUSH, conf 0.98, loss-aversion framing
+  - NON_REVOCABLE_HARD_DECLINE → ESCALATE_TO_HUMAN, conf 0.99, no customer message (correct)
+  - Latency: 1645 / 815 / 1089 ms → avg **1183ms** (< 3000ms target)
+
+### Tomorrow
+
+- Execute Phase 5: action executor, Razorpay client, audit log, orchestrator (`process_batch()`)
+
+---
+
 ## Day 3 — Aug 25
 
 ### Built
