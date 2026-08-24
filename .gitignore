@@ -17,7 +17,8 @@ data/synthetic.csv
 notification_log.jsonl
 
 # Local-only design source schemas (consolidated into project-context/design.md)
-DESIGN.md
-tokens.json
-variables.css
-theme.css
+# Root-anchored so the dashboard's own src/styles/theme.css stays tracked.
+/DESIGN.md
+/tokens.json
+/variables.css
+/theme.css
