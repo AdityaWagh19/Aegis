@@ -1,6 +1,6 @@
 # Phase 5: Action Executor, Audit Log, and Batch Orchestrator
 
-> **Status:** [ ] Not started
+> **Status:** [x] Complete (2026-08-24)
 > **Estimated duration:** Days 8–9
 > **Depends on:** Phase 2 (Tier-1), Phase 3 (Compliance Gate), Phase 4 (Tier-2 Agent)
 
@@ -624,13 +624,13 @@ async def test_audit_log_one_entry_per_mandate():
 
 ## Acceptance Criteria
 
-- [ ] `pytest tests/integration/test_batch_pipeline.py -v` exits with code 0.
-- [ ] `test_deliberate_compliance_violation_caught`: `compliance_violations_executed == 0`.
-- [ ] `test_audit_log_one_entry_per_mandate`: each of 5 mandates has exactly 1 audit entry.
-- [ ] `test_batch_tier1_resolution_rate`: Tier-1 rate between 60% and 85%.
-- [ ] `razorpay_client.py` raises `ValueError` if `RAZORPAY_KEY_ID` does not start with `rzp_test_`.
-- [ ] `AuditLog` class has no `update()` or `delete()` methods.
-- [ ] `action_executor.py` raises `ValueError` for any unrecognised `final_action`.
+- [x] `pytest tests/integration/test_batch_pipeline.py -v` exits with code 0. (3/3)
+- [x] `test_deliberate_compliance_violation_caught`: `compliance_violations_executed == 0`.
+- [x] `test_audit_log_one_entry_per_mandate`: each of 5 mandates has exactly 1 audit entry. (Also confirmed on the live batch: 6 events → 6 rows.)
+- [x] `test_batch_tier1_resolution_rate`: Tier-1 rate between 60% and 85%. (Exactly 80% on the mocked integration batch; 66.7% live.)
+- [x] `razorpay_client.py` raises `ValueError` if `RAZORPAY_KEY_ID` does not start with `rzp_test_`.
+- [x] `AuditLog` class has no `update()` or `delete()` methods.
+- [x] `action_executor.py` raises `ValueError` for any unrecognised `final_action`.
 
 ---
 

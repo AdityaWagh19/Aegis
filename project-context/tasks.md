@@ -131,23 +131,27 @@
 
 ## Phase 5 — Action Executor + Audit Log (Days 8–9: Aug 30–31)
 
-- [ ] `services/razorpay_client.py` — `resume_subscription()`, `pause_subscription()`, `create_payment_link()`
-- [ ] `services/mock_notification.py` — `MockNotificationService` logging to `notification_log.jsonl`
-- [ ] `core/action_executor.py` — routes `compliance_result.final_action` to execution
-- [ ] `audit/log.py` — `AuditLog` class with `audit_log.append()` — append-only write (no `update()` or `delete()` methods)
-- [ ] `core/orchestrator.py` — `process_single()`, `process_batch()` → `BatchResult`
-- [ ] `tests/unit/test_audit.py` — append-only constraint, one entry per mandate
-- [ ] `tests/integration/test_batch_pipeline.py`:
-  - [ ] Full pipeline: Tier-1 resolves 65–75%
-  - [ ] Deliberate violation: Tier-2 proposes retry on non-revocable → gate catches → `ESCALATE_TO_HUMAN`
-  - [ ] Every record produces exactly one audit entry
+- [x] `services/razorpay_client.py` — `resume_subscription()`, `pause_subscription()`, `create_payment_link()` (+ `load_dotenv()` at import; `rzp_test_` prefix enforced at client init)
+- [x] `services/mock_notification.py` — `MockNotificationService` logging to `notification_log.jsonl`
+- [x] `core/action_executor.py` — routes `compliance_result.final_action` to execution (7-action dispatch, no fallthrough; unknown action raises `ValueError`)
+- [x] `audit/log.py` — `AuditLog` class with `audit_log.append()` — append-only write (no `update()` or `delete()` methods)
+- [x] `core/orchestrator.py` — `process_single()`, `process_batch()` → `BatchResult`
+- [ ] `tests/unit/test_audit.py` — append-only constraint, one entry per mandate *(not a plans/overview.md Phase 5 file-index output; covered instead by `tests/integration/test_batch_pipeline.py::test_audit_log_one_entry_per_mandate` + structural D4 design: the class exposes only `append()`)*
+- [x] `tests/integration/test_batch_pipeline.py`:
+  - [x] Full pipeline: Tier-1 resolves 65–75% *(66.7% on live smoke batch; mocked integration batch asserts 60–80% window per plan)*
+  - [x] Deliberate violation: Tier-2 proposes retry on non-revocable → gate catches → `ESCALATE_TO_HUMAN`
+  - [x] Every record produces exactly one audit entry
+- [x] `tests/conftest.py` — test-DB isolation (`aegis_test.db`) per phase plan risk table
+- [x] Live end-to-end pipeline smoke (`scripts/smoke_test_pipeline.py`) — real Groq + real Razorpay test mode + SQLite audit
 
 ### Phase 5 Acceptance Criteria
 
-- [ ] `process_batch()` returns `BatchResult`
-- [ ] Razorpay test-mode API calls succeed
-- [ ] All integration tests pass
-- [ ] `compliance_violations_executed == 0` assertion holds on test batch
+> Authoritative criteria: plans/phase-5-action-executor-audit.md §Acceptance Criteria — all satisfied (2026-08-24).
+
+- [x] `process_batch()` returns `BatchResult`
+- [x] Razorpay test-mode API calls succeed *(payment-link creation verified live; subscription resume/pause correctly return outcome="failed" for synthetic ids — no such subscriptions exist in test mode; UPI payment links are refused by Razorpay in test mode, platform limitation recorded in progress.md)*
+- [x] All integration tests pass (3/3; full suite 52/52)
+- [x] `compliance_violations_executed == 0` assertion holds on test batch
 
 ---
 

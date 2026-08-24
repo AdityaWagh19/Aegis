@@ -246,6 +246,42 @@
 
 ---
 
+## Phase 5 Execution — Aug 24 (same day, sixth session)
+
+### Built
+
+- `services/razorpay_client.py` — test-mode-only Razorpay wrappers (`rzp_test_` prefix enforced at init; sync SDK wrapped in `run_in_executor`)
+- `services/mock_notification.py` — WhatsApp/SMS stub writing `notification_log.jsonl`
+- `core/action_executor.py` — 7-action dispatch with no fallthrough; unknown action raises `ValueError`; API failures → outcome `"failed"`
+- `audit/log.py` — append-only `AuditLog` (only `append()` exists), full decision payload per entry
+- `core/orchestrator.py` — `process_batch()`: Tier-1 → (Tier-2) → Gate → Executor → Audit, plus human-review queue writes and inline metrics
+- `tests/conftest.py` — integration tests isolated on `aegis_test.db` (set before models.db import; session-scoped create/cleanup) per the plan's risk table
+- `tests/integration/test_batch_pipeline.py` — 3 tests: tier-split window, deliberate non-revocable violation caught + never executed, one audit row per mandate
+- `scripts/smoke_test_pipeline.py` — live end-to-end batch through the real stack
+
+### Failures and Fixes
+
+- **`ModuleNotFoundError: pkg_resources`** — razorpay 1.4.1 imports `pkg_resources`; Python 3.12 venvs ship without setuptools and setuptools ≥81 removed the module. Fixed by installing/pinning `setuptools<81` in requirements.txt (documented as a razorpay transitive requirement).
+
+### Decisions Made
+
+- Live smoke revealed two genuine platform facts, recorded for the demo: (1) **Razorpay test mode does not support UPI payment links** ("not supported in Test Mode") — intent-push outcomes are `failed` in test mode but will work on live mode; (2) subscription resume/pause on synthetic mandate ids 404 → outcome `failed`, which exercises the executor's error path honestly.
+- `HumanReviewQueue.reason` falls back to `"tier2_escalation"` when escalation came from Tier-1 directly (no compliance rule involved) — per plan code, kept as-is.
+- SQLite does not enforce FK constraints by default: orchestrator intentionally never inserts `MandateEventORM` rows, so review-queue/decision FKs to `mandate_events` would fail on PostgreSQL if events aren't persisted first. Noted as a production-deploy consideration (Phase 9/EC2); harmless on SQLite dev.
+
+### Metrics
+
+- Integration suite: **3/3 passed**; full suite: **52/52 passed**
+- Live pipeline batch (6 events): tier1=4 (66.7%), tier2=2; renewal-link payment link **executed** on Razorpay test mode; nudge mocked; NRHD escalated + queued; violations caught=0, executed=0
+- audit_log: exactly 6 rows (entry_id autoincrement 1–6 — Phase 1 PK fix validated); human_review_queue: 1 row
+- Tier-1 regression unchanged: 83.8% resolved, P95 ≈ 0.00ms
+
+### Tomorrow
+
+- Execute Phase 6: FastAPI layer wrapping `process_batch()`
+
+---
+
 ## Day 3 — Aug 25
 
 ### Built
