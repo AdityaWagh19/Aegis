@@ -63,21 +63,19 @@
 
 Groq is used instead of Anthropic. Free API tier, extremely low inference latency, OpenAI-compatible interface.
 
+> **Update 2026-08-24:** The original model picks (`llama-3.3-70b-versatile`, `llama-3.1-8b-instant`, `mixtral-8x7b-32768`) are no longer served on Groq's catalog (mixtral decommissioned; Llama chat models absent from current catalog). Replaced with verified equivalents below — all verified for structured tool-calling against the live API on this account.
+
 | Use Case | Model | Reason |
 |---|---|---|
-| Tier-2 primary reasoning | `llama-3.3-70b-versatile` | Best accuracy for ambiguous composite cases; most reliable structured output; best Hinglish quality |
-| Tier-2 high-volume (batch > 100) | `llama-3.1-8b-instant` | ~5x faster than 70B; use when speed matters more than marginal accuracy |
-| Hinglish message drafting | `llama-3.3-70b-versatile` | Better cultural fluency and code-switching quality |
-| Fallback if rate-limited | `mixtral-8x7b-32768` | Solid function calling, 32k context window |
+| Tier-2 primary reasoning | `openai/gpt-oss-120b` | Strongest available reasoning; structured tool-calling verified; best Hinglish quality on live test |
+| Tier-2 high-volume / fast path | `openai/gpt-oss-20b` | ~2x faster than 120B; tool-calling verified with fluent Hinglish output |
+| Fallback if rate-limited | `openai/gpt-oss-20b` (on `GROQ_API_KEY_FALLBACK`) | Same-model retry on a second free-tier key doubles rate budget |
 
-**Rate limits (free tier):**
-- `llama-3.3-70b-versatile`: ~30 requests/minute, ~14,400/day
-- `llama-3.1-8b-instant`: ~60 requests/minute
-- A demo batch of 50–200 records produces 12–70 Tier-2 calls — well within limits.
+**Rate limits (free tier):** roughly 30 requests/min per key/model for large models, lower for small. A demo batch of 50–200 records produces 12–70 Tier-2 calls — within limits, and two keys double headroom.
 
 **Temperature:**
-- `temperature=0.2` for Hinglish message drafting (slight variety)
-- `temperature=0` for action selection if using a two-step prompt
+- `temperature=0.1` in `tier2_reason()` for action selection + message drafting in a single forced tool call
+- (Original plan: 0.2 for a separate drafting step; superseded by the single-call design in Task 4.4)
 
 ---
 
@@ -169,9 +167,10 @@ Copy `.env.example` to `.env` and fill in all values. Never commit `.env`.
 
 ```bash
 GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-GROQ_MODEL_TIER2=llama-3.3-70b-versatile
-GROQ_MODEL_TIER2_FAST=llama-3.1-8b-instant
-GROQ_MODEL_FALLBACK=mixtral-8x7b-32768
+GROQ_API_KEY_FALLBACK=gsk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   # optional second key for rate-limit headroom
+GROQ_MODEL_TIER2=openai/gpt-oss-120b
+GROQ_MODEL_TIER2_FAST=openai/gpt-oss-20b
+GROQ_MODEL_FALLBACK=openai/gpt-oss-20b
 ```
 
 ### Razorpay (Test Mode ONLY)
