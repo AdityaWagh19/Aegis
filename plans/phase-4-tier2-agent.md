@@ -179,16 +179,6 @@ from config.loader import load_config
 logger = logging.getLogger(__name__)
 
 _cfg = load_config()
-MODEL = _cfg.__dict__.get("groq_model_tier2", "llama-3.3-70b-versatile")
-
-# Tier2Result validation model (import from models/ but defined here for clarity)
-_FALLBACK_RESULT = Tier2Result(
-    action="ESCALATE_TO_HUMAN",
-    message_hinglish="Aapke mandate ke baare mein hamare team se baat karein.",
-    rationale="tier2_failure",
-    confidence=0.0,
-    alternatives_considered=None,
-)
 
 
 async def tier2_reason(event: MandateEvent) -> Tier2Result:

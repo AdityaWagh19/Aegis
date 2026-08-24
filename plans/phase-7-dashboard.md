@@ -38,7 +38,7 @@ Recharts is a React-native charting library with TypeScript types. It requires n
 This is a design requirement, not a preference. Any compliance override in the batch must render a visually distinct card. The card shows: mandate ID, proposed action (struck through), violation rule, final action, and a link to the full audit entry.
 
 **D5 — `BatchUploader` shows a progress indicator during processing.**
-Because `process_batch()` can take up to 30s for a large batch, the uploader renders a spinner/progress bar after upload. The `POST /api/v1/recovery/batch` response is awaited inline.
+Because `process_batch()` processes events sequentially, batches with significant Tier-2 routing can take >30s (worst case: 30% Tier-2 on 200 records = ~60s). The uploader renders a spinner/progress bar after upload. The `POST /api/v1/recovery/batch` response is awaited inline.
 
 ---
 
@@ -46,8 +46,7 @@ Because `process_batch()` can take up to 30s for a large batch, the uploader ren
 
 ```bash
 cd dashboard
-npx create-react-app . --template typescript
-# OR with Vite (preferred for speed):
+# Use Vite (required — aegis.ts uses import.meta.env.VITE_* which is Vite-specific; CRA uses process.env.REACT_APP_*)
 npm create vite@latest . -- --template react-ts
 npm install
 npm install recharts axios react-dropzone

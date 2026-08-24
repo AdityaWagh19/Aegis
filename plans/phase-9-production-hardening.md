@@ -152,11 +152,15 @@ class TenantORM(Base):
     tenant_id = Column(String, primary_key=True, default=lambda: f"t_{uuid.uuid4().hex[:12]}")
     name = Column(String(200), nullable=False, unique=True)
     api_key_hash = Column(String(64), nullable=False, unique=True)   # SHA-256 of raw key
-    webhook_url = Column(String(500))          # Where Aegis sends decision callbacks
-    callback_secret = Column(String(500))      # Encrypted; used to sign outbound callbacks
-    razorpay_key_id_enc = Column(String(500))  # Fernet-encrypted Razorpay key_id
+    webhook_url = Column(String(500))              # Where Aegis sends decision callbacks
+    callback_secret = Column(String(500))          # Encrypted; used to sign outbound callbacks
+    razorpay_key_id_enc = Column(String(500))      # Fernet-encrypted Razorpay key_id
     razorpay_key_secret_enc = Column(String(500))  # Fernet-encrypted Razorpay key_secret
-    razorpay_webhook_secret_hash = Column(String(64))  # SHA-256 for webhook verification
+    razorpay_webhook_secret_enc = Column(String(500))  # Fernet-encrypted; MUST be stored to verify HMAC
+    razorpay_webhook_secret_hash = Column(String(64))   # SHA-256 of plaintext secret (for fast lookup)
+    # NOTE: Both _enc and _hash are stored. _hash enables fast constant-time tenant lookup
+    # during webhook ingestion (without decrypting every row). _enc is decrypted once the
+    # correct tenant row is identified, for actual HMAC verification.
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
 
@@ -209,8 +213,9 @@ def compliance_config_for_tenant(tenant_config: TenantComplianceConfigSchema):
     """
     Converts a TenantComplianceConfigSchema (from DB) to a ComplianceConfig
     compatible with the existing compliance gate and Tier-1 engine.
+    ComplianceConfig, MaxRetryAttempts, and load_config are already in scope
+    because this function is defined in config/loader.py.
     """
-    from config.loader import ComplianceConfig, MaxRetryAttempts, SyntheticDistribution
     return ComplianceConfig(
         afa_threshold_general=tenant_config.afa_threshold_general,
         afa_threshold_sip_insurance=tenant_config.afa_threshold_sip_insurance,
@@ -270,6 +275,46 @@ if __name__ == "__main__":
     asyncio.run(create(args.name, args.webhook_url))
 ```
 
+#### Task 9.1.5 — Admin script to set per-tenant Razorpay credentials
+
+```python
+# scripts/set_tenant_razorpay.py
+"""
+Usage: python scripts/set_tenant_razorpay.py --tenant-id t_123 --key-id rzp_test_xxx --key-secret yyy --webhook-secret zzz
+Encrypts Razorpay API keys and webhook secrets and stores them for the specified tenant.
+"""
+import asyncio, argparse
+from sqlalchemy import select
+from models.tenant import encrypt, hash_api_key
+from models.db import AsyncSessionLocal, TenantORM, init_db
+
+
+async def set_credentials(tenant_id: str, key_id: str, key_secret: str, webhook_secret: str):
+    await init_db()
+    async with AsyncSessionLocal() as db:
+        tenant = (await db.execute(select(TenantORM).where(TenantORM.tenant_id == tenant_id))).scalars().first()
+        if not tenant:
+            print(f"Error: Tenant '{tenant_id}' not found.")
+            return
+
+        tenant.razorpay_key_id_enc = encrypt(key_id)
+        tenant.razorpay_key_secret_enc = encrypt(key_secret)
+        tenant.razorpay_webhook_secret_enc = encrypt(webhook_secret)
+        tenant.razorpay_webhook_secret_hash = hash_api_key(webhook_secret)
+        await db.commit()
+        print(f"Razorpay credentials configured successfully for tenant '{tenant_id}'.")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--tenant-id", required=True)
+    parser.add_argument("--key-id", required=True)
+    parser.add_argument("--key-secret", required=True)
+    parser.add_argument("--webhook-secret", required=True)
+    args = parser.parse_args()
+    asyncio.run(set_credentials(args.tenant_id, args.key_id, args.key_secret, args.webhook_secret))
+```
+
 ---
 
 ### Sub-phase 9.2 — API Key Auth Middleware
@@ -321,7 +366,9 @@ async def get_tenant_from_request(request: Request) -> TenantSchema:
         tenant_orm = result.scalars().first()
 
     if not tenant_orm:
-        _tenant_cache[key_hash] = None
+        # Do NOT cache negative results. Caching None permanently blacklists the key
+        # until process restart, which would block valid keys after a transient DB error.
+        # Let invalid key lookups hit the DB each time (they're rare and already hashed).
         logger.warning("Invalid API key presented (hash prefix: %s...)", key_hash[:8])
         raise HTTPException(status_code=403, detail="Invalid API key.")
 
@@ -398,6 +445,79 @@ from arq.connections import RedisSettings
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
 
 redis_settings = RedisSettings.from_dsn(REDIS_URL)
+```
+
+#### Task 9.3.2b — Refactor `services/razorpay_client.py` and `core/action_executor.py` for per-tenant injection
+
+```python
+# services/razorpay_client.py (Phase 9 refactor)
+import os
+import asyncio
+import logging
+from typing import Any
+import razorpay
+
+logger = logging.getLogger(__name__)
+
+
+class RazorpayClient:
+    """
+    Per-tenant Razorpay client wrapper.
+    Accepts explicit credentials on initialization for multi-tenancy.
+    """
+    def __init__(self, key_id: str, key_secret: str):
+        if not key_id.startswith("rzp_test_"):
+            raise ValueError(
+                f"RAZORPAY_KEY_ID must start with 'rzp_test_'. Got: '{key_id[:12]}...'. "
+                "Live keys are not permitted."
+            )
+        self.key_id = key_id
+        self.key_secret = key_secret
+        self.client = razorpay.Client(auth=(key_id, key_secret))
+        logger.info("Razorpay client initialised for key: %s...", key_id[:16])
+
+    async def resume_subscription(self, subscription_id: str) -> dict:
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(
+            None,
+            lambda: self.client.subscription.resume(subscription_id, {"resume_at": "now"})
+        )
+
+    async def pause_subscription(self, subscription_id: str) -> dict:
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(
+            None,
+            lambda: self.client.subscription.pause(subscription_id, {"pause_at": "now"})
+        )
+
+    async def create_payment_link(self, amount: int, mandate_id: str, upi_intent: bool = False) -> dict:
+        loop = asyncio.get_running_loop()
+        payload = {
+            "amount": amount * 100,
+            "currency": "INR",
+            "description": f"Payment recovery — {mandate_id}",
+            "upi_link": upi_intent,
+            "notify": {"sms": False, "email": False},
+            "notes": {"mandate_id": mandate_id, "recovery_type": "UPI_INTENT" if upi_intent else "RENEWAL"},
+        }
+        return await loop.run_in_executor(
+            None,
+            lambda: self.client.payment_link.create(payload)
+        )
+```
+
+And update `core/action_executor.py` `execute()` to accept an optional `razorpay_client: RazorpayClient | None = None`:
+
+```python
+# In core/action_executor.py
+async def execute(
+    event: MandateEvent,
+    final_action: str,
+    hinglish_message: str | None = None,
+    razorpay_client: RazorpayClient | None = None,
+) -> tuple[str, dict | None]:
+    # Use injected razorpay_client if provided, else fallback to global singleton functions
+    ...
 ```
 
 #### Task 9.3.3 — Implement `workers/mandate_worker.py`
@@ -637,9 +757,68 @@ async def process_single_with_config(
     gate = ComplianceGate(config=compliance_cfg)
     event.batch_id = event.batch_id or f"webhook_{tenant_id}"
 
-    tier1_result = tier1_classify(event)
-    # (same logic as _process_single, but passes gate and razorpay_client through)
-    ...
+    # --- Tier-1 ---
+    tier1_result = tier1_classify(event, config=compliance_cfg)
+
+    if tier1_result.is_ambiguous:
+        # --- Tier-2 ---
+        budget = getattr(compliance_cfg, "tier2_budget_per_minute", 10)
+        tier2_result = await tier2_reason(event, tenant_id=tenant_id, tier2_budget=budget)
+        proposed_action = tier2_result.action
+        tier_decided = 2
+        rationale = tier2_result.rationale
+        confidence = tier2_result.confidence
+        hinglish_message = tier2_result.message_hinglish
+        alternatives = tier2_result.alternatives_considered
+    else:
+        proposed_action = tier1_result.action
+        tier_decided = 1
+        rationale = tier1_result.reason
+        confidence = None
+        hinglish_message = None
+        alternatives = None
+
+    # --- Compliance Gate (always runs per-tenant) ---
+    compliance_result = gate.check(event, proposed_action)
+    final_action = compliance_result.final_action
+
+    if compliance_result.violation_blocked:
+        logger.warning(
+            "Compliance violation blocked: mandate_id=%s proposed=%s rule=%s final=%s tenant_id=%s",
+            event.mandate_id, proposed_action,
+            compliance_result.violation_rule, final_action, tenant_id
+        )
+
+    # --- Action Executor (with per-tenant Razorpay client) ---
+    outcome, razorpay_response = await execute(
+        event=event,
+        final_action=final_action,
+        hinglish_message=hinglish_message,
+        razorpay_client=razorpay_client,
+    )
+
+    # --- Escalation Queue ---
+    if outcome == "escalated":
+        await _add_to_review_queue(event, compliance_result.violation_rule, db, tenant_id=tenant_id)
+
+    decision = RecoveryDecision(
+        mandate_id=event.mandate_id,
+        tier_that_decided=tier_decided,
+        proposed_action=proposed_action,
+        compliance_result=compliance_result,
+        final_action=final_action,
+        outcome=outcome,
+        rationale=rationale,
+        confidence=confidence,
+        hinglish_message=hinglish_message,
+        alternatives_considered=alternatives,
+        razorpay_response=razorpay_response,
+    )
+
+    # --- Audit Log (with tenant attribution) ---
+    await audit_log.append(event, decision, db, tenant_id=tenant_id)
+
+    return decision
 ```
 
 ---

@@ -77,6 +77,14 @@ class ComplianceGate:
         Returns a ComplianceResult with the final_action that may execute.
         """
         # Rule 1: Non-revocable mandate — only ESCALATE_TO_HUMAN is permitted
+        # SCOPE NOTE: This rule triggers only when BOTH is_revocable=False AND
+        # decline_code == "NON_REVOCABLE_HARD_DECLINE". This is intentional:
+        # is_revocable=False is set by the NBFC for loan EMI mandates; the
+        # NON_REVOCABLE_HARD_DECLINE code confirms the specific hard-decline event.
+        # A non-revocable mandate receiving a BANK_TECHNICAL_DECLINE (transient)
+        # may still receive RETRY_AFTER_BACKOFF — the NBFC has opted in to that
+        # behaviour via the is_revocable flag. If broader protection is required,
+        # change the condition to: `if not event.is_revocable:`
         if not event.is_revocable and event.decline_code == "NON_REVOCABLE_HARD_DECLINE":
             if proposed_action != "ESCALATE_TO_HUMAN":
                 return ComplianceResult(

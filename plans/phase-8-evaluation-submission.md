@@ -119,6 +119,16 @@ async def _run_evaluation(events: list[MandateEvent]) -> EvaluationResult:
 
 
 def evaluate_held_out_set(path: str = "data/synthetic_held_out.csv") -> EvaluationResult:
+    """
+    Load the held-out set and run the full pipeline evaluation.
+
+    IMPORTANT: Do NOT call this function from inside an async context (e.g., an
+    asyncio test, a pytest-asyncio test, or a Jupyter notebook with an active
+    event loop). `asyncio.run()` will raise `RuntimeError: This event loop is
+    already running` in those environments.
+
+    Correct usage: `python -m synthetic.evaluator` from the terminal.
+    """
     events = load_held_out_events(path)
     result = asyncio.run(_run_evaluation(events))
 
@@ -182,7 +192,7 @@ python -m synthetic.evaluator
 echo "--- Evaluation complete ---"
 ```
 
-Record the output of Step 4 in `project-context/progress.md` Day 11 entry (verbatim).
+Record the output of Step 4 in `project-context/progress.md` Day 12 entry (verbatim).
 
 ### Task 8.3 — Deploy to EC2
 
@@ -210,7 +220,7 @@ curl -I https://aegis.yourdomain.com/health   # Should return 200 via Nginx + SS
 
 ### Task 8.4 — Demo batch preparation
 
-Create `data/demo_batch.csv` — 52 records specifically crafted for the demo:
+Create `data/demo_batch.csv` — 53 records specifically crafted for the demo:
 
 ```python
 # scripts/make_demo_batch.py
@@ -257,7 +267,7 @@ with open("data/demo_batch.csv", "w", newline="", encoding="utf-8") as f:
     w.writerows(rows)
 
 print(f"Demo batch created: {len(rows)} records -> data/demo_batch.csv")
-print("NON_REVOCABLE mandate ID: MAND-053 (the compliance override case)")
+print("NON_REVOCABLE mandate ID: MAND-053 (the 53rd record — the compliance override case)")
 ```
 
 Run: `python scripts/make_demo_batch.py`

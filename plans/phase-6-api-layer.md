@@ -30,7 +30,7 @@ Wrap the batch processing pipeline in a FastAPI application with all seven endpo
 Every route function is at most 15 lines: parse input, call a `core/` or `synthetic/` function, return the result. If a route grows beyond this, extract a service function into `core/`.
 
 **D2 — Batch processing is synchronous within the request for the demo.**
-`process_batch()` is called with `await` inside the POST handler. For a demo batch of 50–200 records this is acceptable (< 30s). A production system would use a Celery/ARQ background task and polling — the polling pattern is already supported by `GET /v1/recovery/batch/{batch_id}` returning a stored result.
+`process_batch()` is called with `await` inside the POST handler. Tier-2 Groq calls are sequential (one `await tier2_reason()` per ambiguous event). Worst-case timing for a 200-record batch: 30% Tier-2 = 60 sequential calls × ~1s = ~60s. This is acceptable for a demo batch of 10–50 records. A production system uses ARQ background tasks (Phase 9) — the polling pattern is already supported by `GET /v1/recovery/batch/{batch_id}`.
 
 **D3 — CSV parsing happens in the route, not in `process_batch()`.**
 The route reads the multipart CSV upload, parses it into a `list[MandateEvent]`, and passes the list to `process_batch()`. This keeps the orchestrator agnostic of HTTP transport.
@@ -180,7 +180,12 @@ async def upload_batch(file: UploadFile = File(...)):
 
 @router.get("/recovery/batch/{batch_id}")
 async def get_batch(batch_id: str):
-    """Poll batch processing results."""
+    """
+    Poll batch processing results.
+    NOTE: Returns the full BatchResult including ALL decisions (no pagination).
+    For a 500-record batch this can be a ~250KB payload. For large-scale use,
+    add a ?page / ?page_size query parameter or filter by mandate_id.
+    """
     if batch_id not in _batch_cache:
         raise HTTPException(status_code=404, detail=f"Batch '{batch_id}' not found.")
     return _batch_cache[batch_id]

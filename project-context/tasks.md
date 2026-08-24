@@ -1,4 +1,4 @@
-﻿# Task List — Aegis
+# Task List — Aegis
 
 > **Status:** Living document. Updated multiple times per day during the build.
 > Mark `[/]` when starting a task, `[x]` when complete.
@@ -62,7 +62,7 @@
 ## Phase 2 — Tier-1 Rule Engine (Days 3–4: Aug 25–26)
 
 - [ ] `core/tier1_engine.py` — `classify(event, config) -> Tier1Result`
-  - [ ] `INSUFFICIENT_FUNDS` (high-bounce escalation when `prior_bounce_count >= 3`)
+  - [ ] `INSUFFICIENT_FUNDS` (high-bounce escalation when `prior_bounce_count > 3`, i.e., 4 or more bounces)
   - [ ] `AFA_REQUIRED` (clear: amount > threshold; borderline: within 10% → ambiguous)
   - [ ] `MANDATE_PAUSED` → `SEND_HINGLISH_NUDGE`
   - [ ] `BANK_TECHNICAL_DECLINE` (attempt < max → `RETRY_AFTER_BACKOFF`; at max → ambiguous)
@@ -77,7 +77,7 @@
 
 - [ ] All `test_tier1.py` tests pass
 - [ ] Tier-1 latency P95 < 5ms on 500 records
-- [ ] Tier-1 resolves 65–75% of generated dataset
+- [ ] Tier-1 resolves 60–80% of generated dataset
 
 ---
 
@@ -105,7 +105,7 @@
 - [ ] `core/tier2_agent.py` — `tier2_reason(event, config) -> Tier2Result`
   - [ ] Groq tool schema: `action` enum, `message_hinglish`, `confidence`, `alternatives_considered`
   - [ ] `SYSTEM_PROMPT` with taxonomy, allow-list, 3 Hinglish examples
-  - [ ] Two-step prompt: classify (temperature=0.1), then draft message (temperature=0.2)
+  - [ ] Single tool call: action + message_hinglish returned together at temperature=0.1 via `propose_recovery_action` tool schema
   - [ ] `if not choice.message.tool_calls:` guard before indexing (Groq reliability risk)
   - [ ] Pydantic validation of tool call JSON — rejects out-of-allow-list action
   - [ ] Fallback on `ValidationError`, `APIError`, timeout → `ESCALATE_TO_HUMAN`
@@ -124,7 +124,7 @@
 - [ ] `services/razorpay_client.py` — `resume_subscription()`, `pause_subscription()`, `create_payment_link()`
 - [ ] `services/mock_notification.py` — `MockNotificationService` logging to `notification_log.jsonl`
 - [ ] `core/action_executor.py` — routes `compliance_result.final_action` to execution
-- [ ] `audit/log.py` — `append_audit_entry()` — append-only write
+- [ ] `audit/log.py` — `AuditLog` class with `audit_log.append()` — append-only write (no `update()` or `delete()` methods)
 - [ ] `core/orchestrator.py` — `process_single()`, `process_batch()` → `BatchResult`
 - [ ] `tests/unit/test_audit.py` — append-only constraint, one entry per mandate
 - [ ] `tests/integration/test_batch_pipeline.py`:

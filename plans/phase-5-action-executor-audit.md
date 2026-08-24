@@ -80,7 +80,7 @@ def get_razorpay_client() -> razorpay.Client:
 async def resume_subscription(subscription_id: str) -> dict:
     """RETRY_AFTER_BACKOFF: Resume a paused subscription immediately."""
     client = get_razorpay_client()
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()  # get_running_loop() is safe in async context; get_event_loop() is deprecated in 3.10+, crashes in 3.12
     try:
         result = await loop.run_in_executor(
             None,
@@ -96,7 +96,7 @@ async def resume_subscription(subscription_id: str) -> dict:
 async def pause_subscription(subscription_id: str) -> dict:
     """SCHEDULE_POST_SALARY: Pause a subscription to reschedule post-salary."""
     client = get_razorpay_client()
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()  # get_running_loop() is the correct Python 3.10+ async-safe call
     try:
         result = await loop.run_in_executor(
             None,
@@ -112,7 +112,7 @@ async def pause_subscription(subscription_id: str) -> dict:
 async def create_payment_link(amount: int, mandate_id: str, upi_intent: bool = False) -> dict:
     """SEND_UPI_INTENT_PUSH / SEND_MANDATE_RENEWAL_LINK: Create a payment link."""
     client = get_razorpay_client()
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()  # get_running_loop() is the correct Python 3.10+ async-safe call
     payload = {
         "amount": amount * 100,     # Paise
         "currency": "INR",
@@ -299,6 +299,9 @@ class AuditLog:
         )
         db.add(entry)
         await db.commit()
+        # NOTE (Phase 9 migration): This commits once per mandate event (one round-trip per record).
+        # For PostgreSQL at production scale, remove this per-record commit and instead batch-commit
+        # all AuditLog entries at the end of process_batch() for a single round-trip per batch.
         logger.debug("Audit entry written for mandate_id=%s", event.mandate_id)
 
 
@@ -337,6 +340,11 @@ async def process_batch(events: list[MandateEvent]) -> BatchResult:
     Main entry point for batch processing.
     Wires Tier-1 -> Tier-2 (if needed) -> Compliance Gate -> Action Executor -> Audit Log.
     Returns BatchResult with all decisions and computed metrics.
+
+    Performance note: Tier-2 Groq calls are sequential within this function.
+    Worst-case: 30% Tier-2 on a 200-record batch = 60 sequential ~1s calls = ~60s.
+    For production throughput, Phase 9 moves processing to async ARQ workers
+    (one worker job per webhook event) and uses asyncio.gather() for parallel calls.
     """
     batch_id = str(uuid.uuid4())
     decisions: list[RecoveryDecision] = []
@@ -532,7 +540,7 @@ async def test_batch_tier1_resolution_rate():
         p.stop()
 
     tier1_pct = result.metrics.tier1_pct
-    assert 60.0 <= tier1_pct <= 85.0, f"Tier-1 rate {tier1_pct}% outside expected range"
+    assert 60.0 <= tier1_pct <= 80.0, f"Tier-1 rate {tier1_pct}% outside expected range 60–80%"
     assert result.metrics.total_records == 10
 
 

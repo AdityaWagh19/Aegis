@@ -56,9 +56,9 @@ Phases 2, 3, and 4 all depend only on Phase 1 and can be executed in sequence (2
 | Phase | Name | Duration Estimate | Depends On | Ends With |
 |---|---|---|---|---|
 | 1 | Foundation | Day 1–2 | — | Locked held-out set, all models, DB tables created, synthetic CSV generated |
-| 2 | Tier-1 Rule Engine | Day 3–4 | Phase 1 | Full unit tests passing, < 5ms P95, 65–75% resolution confirmed |
+| 2 | Tier-1 Rule Engine | Day 3–4 | Phase 1 | Full unit tests passing, < 5ms P95, 60–80% resolution confirmed |
 | 3 | Compliance Gate | Day 5 | Phase 1 | All 4 rules unit-tested, pure function proven, no LLM deps |
-| 4 | Tier-2 Groq Agent | Day 6–7 | Phase 1, 3 | Structured output validated, Hinglish drafting working, fallback proven |
+| 4 | Tier-2 Groq Agent | Day 6–7 | Phase 1 | Structured output validated, Hinglish drafting working, fallback proven |
 | 5 | Action Executor + Audit | Day 8–9 | Phase 2, 3, 4 | Full `process_batch()` callable, Razorpay test calls working, audit log append-only |
 | 6 | API Layer | Day 9–10 | Phase 5 | All endpoints returning correct data, integration tests passing |
 | 7 | Dashboard | Day 10–11 | Phase 6 | All components rendering, compliance override card visible, CSV upload working |
@@ -118,7 +118,6 @@ Mark phase status using the following states in this document:
 - `models/db.py`
 - `config/loader.py`
 - `synthetic/generator.py`
-- `synthetic/held_out.py`
 - `synthetic/evaluator.py`
 - `data/synthetic.csv` (generated, committed)
 - `data/synthetic_held_out.csv` (generated, committed, never overwritten)

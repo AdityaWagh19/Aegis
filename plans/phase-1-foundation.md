@@ -21,8 +21,7 @@ Establish the complete project skeleton, shared data models, database schema, co
 - SQLAlchemy ORM models: `mandate_events`, `recovery_decisions`, `audit_log`, `human_review_queue`
 - Database initialisation script (creates all tables)
 - `config/loader.py` — loads and validates `compliance_config.yaml`
-- `synthetic/generator.py` — generates 500 mandate events with the target distribution
-- `synthetic/held_out.py` — splits and locks the held-out set
+- `synthetic/generator.py` — generates 500 mandate events with the target distribution and splits/locks the held-out set internally
 - `synthetic/evaluator.py` — skeleton with `evaluate_held_out_set()` function signature (full implementation in Phase 8)
 - Generated CSV files committed to the repository
 
@@ -291,7 +290,7 @@ RETRY_ACTIONS = ["RETRY_AFTER_BACKOFF", "SCHEDULE_POST_SALARY"]
 
 
 class MandateEvent(BaseModel):
-    mandate_id: str = None
+    mandate_id: Optional[str] = None   # Optional[str]: empty string from CSV also triggers UUID generation
     customer_id: str
     amount: int                            # INR, integer paise-free
     mandate_type: MANDATE_TYPES
@@ -307,7 +306,7 @@ class MandateEvent(BaseModel):
     correct_action: Optional[str] = None  # Ground truth — populated in synthetic data only
 
     def model_post_init(self, __context) -> None:
-        if self.mandate_id is None:
+        if not self.mandate_id:  # Catches both None and empty string "" from CSV rows
             self.mandate_id = str(uuid.uuid4())
 ```
 
