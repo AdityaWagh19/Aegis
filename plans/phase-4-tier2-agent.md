@@ -25,6 +25,8 @@ Implement the Groq-powered reasoning agent that handles ambiguous mandate cases 
 **D1 — Groq with tool calling (function calling), not plain text completion.**
 The agent uses Groq's function-calling interface to return structured JSON. This is more reliable than prompting for JSON in a text response and then parsing it. The tool schema defines `action` as an enum of `ALLOWED_ACTIONS`, `message_hinglish` as a required string, `confidence` as a float, and `alternatives_considered` as an optional list.
 
+> **Risk — Groq function calling reliability:** On the free tier, Groq's function-calling interface occasionally returns a non-tool-call text completion instead of a tool result, especially under high load or for `mixtral-8x7b-32768`. The fallback in Task 4.3 handles this: any response that does not contain `tool_calls` is caught by `if not choice.message.tool_calls:` and immediately returns `ESCALATE_TO_HUMAN`. Do not assume `tool_calls` is always populated — always check before indexing. The unit test `test_tier2_fallback_on_malformed_output` in `test_tier2_schema.py` asserts this path is exercised.
+
 **D2 — Pydantic validation is the final enforcement layer.**
 After Groq returns a tool call result, the JSON is parsed into `Tier2Result` via Pydantic. Any `action` value outside the `Literal` enum raises `ValidationError`. The `except ValidationError` block in `tier2_reason()` catches this and returns the fallback result. The LLM cannot invent a new action at runtime — Pydantic enforces it at parse time.
 

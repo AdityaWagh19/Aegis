@@ -1,7 +1,7 @@
 # Testing Strategy — Aegis
 
 > **Status:** Living document | Add new test cases as edge cases are discovered. Never remove a test case.
-> Run the full suite before every commit. Run the held-out evaluation on Day 11 before recording the demo.
+> Run the full suite before every commit. Run the held-out evaluation on Day 12 before recording the demo.
 
 ---
 
@@ -313,7 +313,7 @@ def test_audit_log_complete_for_batch():
 
 ## Held-Out Evaluation Protocol
 
-**When to run:** Day 11 (evaluation day), and once more before recording the demo.
+**When to run:** Day 12 (evaluation day), and once more before recording the demo.
 
 The held-out set was generated and reserved before any rule-writing began. It was never seen during development.
 
@@ -338,6 +338,101 @@ def evaluate_held_out_set():
     # This assertion must pass before recording the demo
     assert results.metrics.compliance_violations_executed == 0, \
         "CRITICAL: A compliance violation reached execution. Do not record the demo."
+```
+
+---
+
+## Unit Tests — Phase 9 (Auth, Rate Limiter, Tenant Isolation)
+
+### File: `tests/unit/test_auth_middleware.py`
+
+```python
+def test_missing_auth_header_returns_401():
+    response = client.post("/api/v1/recovery/batch")
+    assert response.status_code == 401
+
+def test_invalid_api_key_returns_403():
+    response = client.post("/api/v1/recovery/batch",
+                           headers={"Authorization": "Bearer bad_key"})
+    assert response.status_code == 403
+
+def test_valid_api_key_passes():
+    """A properly hashed tenant API key returns 202, not 401/403."""
+    # Create tenant with known key, hash it, store in DB
+    response = client.post("/api/v1/recovery/batch",
+                           headers={"Authorization": f"Bearer {VALID_TEST_KEY}"},
+                           files={"file": ("demo.csv", demo_csv_bytes, "text/csv")})
+    assert response.status_code == 202
+
+def test_inactive_tenant_returns_403():
+    """A valid key for an inactive tenant (is_active=False) must be rejected."""
+    response = client.post("/api/v1/recovery/batch",
+                           headers={"Authorization": f"Bearer {INACTIVE_TENANT_KEY}"})
+    assert response.status_code == 403
+```
+
+### File: `tests/unit/test_rate_limiter.py`
+
+```python
+def test_rate_limiter_allows_requests_under_budget():
+    """Requests within budget are not throttled."""
+    limiter = Tier2RateLimiter(redis_client=mock_redis, budget_per_minute=10)
+    for _ in range(10):
+        allowed = limiter.check_and_record(tenant_id="t_test")
+        assert allowed is True
+
+def test_rate_limiter_blocks_at_budget_exhaustion():
+    """Request at budget+1 is rejected."""
+    limiter = Tier2RateLimiter(redis_client=mock_redis, budget_per_minute=5)
+    for _ in range(5):
+        limiter.check_and_record(tenant_id="t_test")
+    allowed = limiter.check_and_record(tenant_id="t_test")
+    assert allowed is False
+
+def test_rate_limiter_downgrades_model():
+    """
+    When primary budget is exhausted, tier2_agent falls back to llama-3.1-8b-instant.
+    If that budget is also exhausted, returns ESCALATE_TO_HUMAN.
+    """
+    # Exhaust primary budget
+    for _ in range(10):
+        rate_limiter.check_and_record(tenant_id="t_test")
+    # Next call should use fast model
+    result = tier2_agent.reason_with_rate_limit(event, tenant_id="t_test")
+    assert result.model_used == "llama-3.1-8b-instant" or result.action == "ESCALATE_TO_HUMAN"
+
+def test_tenant_isolation_in_rate_limiter():
+    """Budget exhaustion for tenant A must not affect tenant B."""
+    for _ in range(10):
+        rate_limiter.check_and_record(tenant_id="t_a")
+    allowed_b = rate_limiter.check_and_record(tenant_id="t_b")
+    assert allowed_b is True
+```
+
+### Integration: `tests/integration/test_tenant_pipeline.py`
+
+```python
+def test_two_tenants_produce_different_actions_for_same_amount():
+    """
+    Tenant A: afa_threshold_general=15000 (standard)
+    Tenant B: afa_threshold_general=100000 (NPCI-exempt, SIP-only NBFC)
+    Same mandate amount=20000:
+      - Tenant A: amount > 15000 → SEND_UPI_INTENT_PUSH
+      - Tenant B: amount < 100000 → RETRY_AFTER_BACKOFF
+    """
+    event = MandateEvent(amount=20000, decline_code="AFA_REQUIRED", ...)
+    result_a = process_single_with_config(event, tenant_config=TENANT_A_CONFIG)
+    result_b = process_single_with_config(event, tenant_config=TENANT_B_CONFIG)
+    assert result_a.final_action == "SEND_UPI_INTENT_PUSH"
+    assert result_b.final_action != "SEND_UPI_INTENT_PUSH"  # Not blocked for tenant B
+
+def test_tenant_a_cannot_read_tenant_b_decisions():
+    """Query with tenant_a credentials must not return tenant_b records."""
+    response = client.get("/api/v1/audit",
+                          headers={"Authorization": f"Bearer {TENANT_A_KEY}"})
+    entries = response.json()["entries"]
+    for entry in entries:
+        assert entry.get("tenant_id") == TENANT_A_ID
 ```
 
 ---

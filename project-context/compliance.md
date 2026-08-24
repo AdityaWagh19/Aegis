@@ -243,13 +243,13 @@ The answer to "how do you know the compliance gate cannot be bypassed?" during t
 
 ---
 
-## Open Design Decision — AFA Threshold Detection
+## AFA Threshold Detection — Resolved
 
-**Question (from §32 Open Questions):** Should the SIP/insurance AFA threshold be detected from `mandate_type` or a separate `product_category` field?
+**Question:** Should the SIP/insurance AFA threshold be detected from `mandate_type` or a separate `product_category` field?
 
-**Current assumption:** Add a `product_category` field to `MandateEvent` (values: `"subscription"`, `"loan_emi"`, `"sip"`, `"insurance"`). AFA threshold is looked up from `compliance_config.yaml` based on this field. If the field is absent, default to `afa_threshold_general`.
+**Decision (resolved — Phase 1):** `product_category` field added to `MandateEvent` with values `"subscription" | "loan_emi" | "sip" | "insurance"`. The compliance gate's `_get_afa_threshold()` checks `product_category` and returns `AFA_THRESHOLD_SIP_INSURANCE` for `"sip"` and `"insurance"`, otherwise returns `AFA_THRESHOLD_GENERAL`. If the field is absent, default to `afa_threshold_general`.
 
-**Impact:** Affects `MandateEvent` schema in `models/mandate_event.py` and `ComplianceGate._get_afa_threshold()`.
+**Implemented in:** `models/mandate_event.py` (field definition), `core/compliance_gate.py` (`_get_afa_threshold()`), `config/loader.py` (threshold values). See `plans/phase-1-foundation.md` Task 1.5 and `plans/phase-3-compliance-gate.md`.
 
 ---
 

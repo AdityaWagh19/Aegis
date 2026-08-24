@@ -92,33 +92,63 @@ Aegis/
 |   |   |-- human_review.py   # GET /v1/human-review
 |   |   `-- webhooks.py       # POST /webhooks/razorpay
 |-- core/
+|-- api/
+|   |-- main.py                # FastAPI app, lifecycle, CORS
+|   |-- routes/
+|   |   |-- recovery.py       # POST/GET /recovery/batch
+|   |   |-- mandates.py       # GET /mandates/{id}
+|   |   |-- metrics.py        # GET /metrics
+|   |   |-- audit.py          # GET /audit
+|   |   |-- human_review.py   # GET /human-review
+|   |   `-- webhooks.py       # POST /webhooks/razorpay
+|   `-- middleware/            # [Phase 9] Auth middleware
+|       `-- auth.py
+|-- core/
+|   |-- orchestrator.py       # process_batch(), process_single()
 |   |-- tier1_engine.py       # Deterministic rule lookup — no LLM imports
 |   |-- tier2_agent.py        # Groq (Llama) structured output
 |   |-- compliance_gate.py    # Unconditional compliance enforcement
-|   `-- action_executor.py    # Razorpay + mock stub dispatch
+|   |-- action_executor.py    # Razorpay + mock stub dispatch
+|   `-- tier2_rate_limiter.py # [Phase 9] Redis sliding window rate limiter
 |-- services/
-|   |-- razorpay_client.py
-|   `-- mock_notification.py
+|   |-- razorpay_client.py    # [Phase 9] Per-tenant credential injection
+|   |-- mock_notification.py
+|   `-- callback_service.py   # [Phase 9] HMAC-signed outbound callbacks
+|-- workers/                  # [Phase 9] ARQ async worker
+|   |-- mandate_worker.py
+|   `-- arq_settings.py
+|-- observability/             # [Phase 9] Prometheus + structlog
+|   |-- metrics.py
+|   `-- logging.py
 |-- audit/
 |   `-- log.py                # Append-only audit write
 |-- models/
 |   |-- mandate_event.py      # Pydantic model (input schema)
 |   |-- recovery_decision.py  # Pydantic model (output schema)
-|   `-- db.py                 # SQLAlchemy ORM models
+|   |-- db.py                 # SQLAlchemy ORM models
+|   `-- tenant.py             # [Phase 9] Tenant ORM model
 |-- config/
 |   `-- loader.py             # compliance_config.yaml loader
 |-- synthetic/
 |   |-- generator.py          # Mandate event generator
 |   |-- held_out.py           # Held-out set management
 |   `-- evaluator.py          # Held-out evaluation metrics
+|-- scripts/                  # [Phase 9] Admin utilities
+|   |-- create_tenant.py
+|   `-- set_tenant_razorpay.py
 |-- tests/
 |   |-- unit/
 |   |   |-- test_tier1.py
 |   |   |-- test_compliance_gate.py
-|   |   `-- test_audit.py
+|   |   |-- test_tier2_schema.py
+|   |   |-- test_audit.py
+|   |   |-- test_auth_middleware.py  # [Phase 9]
+|   |   `-- test_rate_limiter.py     # [Phase 9]
 |   `-- integration/
-|       `-- test_batch_pipeline.py
+|       |-- test_batch_pipeline.py
+|       `-- test_tenant_pipeline.py  # [Phase 9]
 |-- project-context/          # All documentation
+|-- plans/                    # Engineering phase specs
 |-- compliance_config.yaml
 |-- .env.example
 |-- docker-compose.yml
@@ -394,6 +424,10 @@ class EvaluationResult(BaseModel):
 | Audit log write per record | < 20ms |
 | Full batch of 50 records | < 30s |
 | Dashboard page load | < 2,000ms |
+| **Phase 9 targets** | |
+| Webhook endpoint response (enqueue only) | < 1,000ms |
+| ARQ worker job processing (full pipeline) | < 45s per record |
+| Client callback delivery (P95) | < 3,000ms |
 
 ---
 

@@ -119,6 +119,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     restart: unless-stopped
 
   db:
@@ -135,9 +137,34 @@ services:
       retries: 5
     restart: unless-stopped
 
+  redis:
+    image: redis:7-alpine
+    command: redis-server --save 60 1
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 5
+    restart: unless-stopped
+
+  worker:
+    build: .
+    command: python -m arq workers.mandate_worker.WorkerSettings
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   pgdata:
+  redisdata:
 ```
+
+> **Note:** The `redis` and `worker` services are added in Phase 9. Phases 1–8 (MVP) only need `api` and `db`. You can run the Phase 1–8 system by commenting out `redis` and `worker` with `docker compose --profile mvp up` once profiles are set, or by simply running `docker compose up api db`.
 
 ---
 
@@ -181,6 +208,20 @@ AFA_THRESHOLD_SIP_INSURANCE=100000
 # Application Behaviour
 ENVIRONMENT=production
 LOG_LEVEL=INFO
+
+# ============================================================
+# Phase 9 — Production Hardening (add these when implementing Phase 9)
+# ============================================================
+
+# Redis (ARQ job queue + Tier-2 rate limiter)
+REDIS_URL=redis://redis:6379/0
+
+# Fernet master key for encrypting tenant Razorpay credentials at rest
+# Generate: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+AEGIS_MASTER_ENCRYPTION_KEY=your_fernet_key_here
+
+# Prometheus metrics
+PROMETHEUS_ENABLED=1
 ```
 
 ---
@@ -249,6 +290,17 @@ jobs:
           GROQ_API_KEY: test_key_not_used_in_unit_tests
           DATABASE_URL: sqlite:///./test.db
           SECRET_KEY: test_secret_key_32_chars_minimum_here
+      - name: Run Phase 9 auth and rate limiter tests (if implemented)
+        run: |
+          if [ -f tests/unit/test_auth_middleware.py ]; then
+            pytest tests/unit/test_auth_middleware.py tests/unit/test_rate_limiter.py -v --tb=short
+          fi
+        env:
+          GROQ_API_KEY: test_key_not_used_in_unit_tests
+          DATABASE_URL: sqlite:///./test.db
+          SECRET_KEY: test_secret_key_32_chars_minimum_here
+          REDIS_URL: redis://localhost:6379/0
+          AEGIS_MASTER_ENCRYPTION_KEY: dGVzdGtleWZvcmNpZW52aXJvbm1lbnQ=
 
   deploy:
     needs: test

@@ -123,7 +123,12 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 # In-memory batch result cache (keyed by batch_id)
-# For demo scale; replace with DB query for production
+# NOTE (Phase 9 migration): This in-memory cache is replaced in Phase 9 by the
+# `batch_jobs` DB table (BatchJobORM). When Phase 9 is implemented:
+#   1. Remove _batch_cache entirely.
+#   2. Replace the GET /recovery/batch/{batch_id} handler with a DB query:
+#      stmt = select(BatchJobORM).where(BatchJobORM.job_id == batch_id)
+#   3. Store batch results in BatchJobORM.result_payload on completion.
 _batch_cache: dict[str, dict] = {}
 
 
@@ -289,11 +294,8 @@ async def get_audit(page: int = Query(default=1, ge=1), page_size: int = Query(d
             .limit(page_size)
         )
         entries = (await db.execute(stmt)).scalars().all()
-        total_stmt = select(func(AuditLogORM.entry_id).count())
-        # Simple count
-        all_entries = (await db.execute(select(AuditLogORM))).scalars().all()
-        total = len(all_entries)
-
+        total_stmt = select(func.count(AuditLogORM.entry_id))  # func.count, not func().count
+        total = (await db.execute(total_stmt)).scalar_one()
     return {
         "total": total,
         "page": page,

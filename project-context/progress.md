@@ -65,23 +65,40 @@
 
 ### Built
 
-- *(Fill in at end of session)*
+- Complete 9-phase engineering specification written to `plans/` directory:
+  - `plans/overview.md` — master dependency graph, phase table, file index, deliverables
+  - `plans/phase-1-foundation.md` through `plans/phase-5-action-executor-audit.md` — core pipeline phases
+  - `plans/phase-6-api-layer.md` — FastAPI routes, CSV parsing, HMAC webhook, batch caching
+  - `plans/phase-7-dashboard.md` — React 18 + TypeScript, 9 components, typed API client
+  - `plans/phase-8-evaluation-submission.md` — evaluator, demo batch, pre-demo checklist
+  - `plans/phase-9-production-hardening.md` — multi-tenancy, API key auth, ARQ async queue, client callbacks, Prometheus, Tier-2 rate limiter
+- `project-context/architecture.md` updated with full Production Architecture section
+- Cross-document audit performed — 5 Critical, 10 High, 8 Medium, 3 Low issues found and fixed
+- Production integration model decided: **Model A — Sidecar**
 
 ### Failures and Fixes
 
-- *(Fill in at end of session)*
+- Architecture.md `replace_file_content` had minor mismatch on trailing newline — resolved by reviewing exact content before edit
 
 ### Decisions Made
 
-- *(Fill in at end of session)*
+- Integration model: Sidecar (Model A) over full middleware replacement — least disruption to existing NBFC systems
+- Async queue: ARQ (asyncio-native) over Celery for Groq `await` compatibility
+- Tenant secret storage: Fernet symmetric encryption with master key over per-secret Secrets Manager
+- Tier-2 rate limiting: Redis sliding window over token bucket — matches Groq rate limit semantics
+- In-memory `_batch_cache` (Phase 6) to be replaced by `batch_jobs` DB table in Phase 9
 
 ### Metrics
 
-- *(Fill in at end of session)*
+- Plans: 9 files, 4,214 insertions
+- Architecture.md: +154 lines (production section)
+- Doc audit: 26 issues identified and resolved across all docs
 
 ### Tomorrow
 
-- *(Fill in at end of session)*
+- Execute Phase 1: project skeleton, Pydantic models, DB schema, SQLite setup
+- Generate synthetic dataset (500 records) and lock held-out set before writing any Tier-1 rules
+- Create `.gitignore`, `.env.example`, `compliance_config.yaml`, `requirements.txt`
 
 ---
 

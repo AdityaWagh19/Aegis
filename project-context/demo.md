@@ -15,7 +15,7 @@ Total runtime: 5 minutes. The compliance override moment is the headline — it 
 | 0:30–1:30 | Tier-1 live | Upload 50+ synthetic failed mandates. Show Tier-1 resolving ~70% in under a second. Failure category table visible on screen. | "We upload a CSV of 52 failed mandates. The Tier-1 deterministic rule engine resolves 37 of them — 71% — in under 200 milliseconds. No LLM call, no cloud round-trip. A lookup table that knows NPCI mandate mechanics." |
 | 1:30–2:30 | Tier-2 live | Show Groq (Llama-3.3-70b) reasoning through 2–3 ambiguous cases. JSON output and Hinglish message on screen. | "The remaining 29% are ambiguous — cases where a single decline code isn't enough. These go to our Groq reasoning agent, which produces structured JSON. It can only propose actions from a fixed allow-list. It drafts the Hinglish customer message here." |
 | 2:30–3:30 | THE MOMENT | Trigger the non-revocable EMI hard-decline case. Show the ComplianceOverrideCard: Claude proposed RETRY_AFTER_BACKOFF, compliance gate REJECTED it, final action is ESCALATE_TO_HUMAN. | "Watch this case. Mandate MAND-042: loan EMI, second hard decline, non-revocable. The Groq agent proposed a retry. Our compliance gate rejected it. The override is logged. That override is the entire point — no LLM output can execute against a non-revocable mandate after two hard declines. Not configurable. Not bypassable." |
-| 3:30–4:30 | Dashboard | Rs. recovered / Rs. at risk front page. Recovery rate by category table. Tier-1 vs Tier-2 split. Compliance violations caught (> 0) vs executed (0). | "The dashboard. Rs. 2,34,500 recovered out of Rs. 5,12,000 at risk — 45.8% recovery rate on a completely fresh batch. Three compliance violations caught by the gate. Zero reached execution." |
+| 3:30–4:30 | Dashboard | Rs. recovered / Rs. at risk front page. Recovery rate by category table. Tier-1 vs Tier-2 split. Compliance violations caught (> 0) vs executed (0). | "The dashboard. Rs. 2,34,500 recovered out of Rs. 5,12,000 at risk — 45.8% recovery rate on a completely fresh batch. Three compliance violations caught by the gate. Zero reached execution." *(Example figures — replace with actual batch output from the demo run.)* |
 | 4:30–5:00 | Close | Static slide or brief narration | "Stripe Smart Retries does not know what a non-revocable e-NACH mandate is. It does not know the AFA threshold. It does not know the 24-hour pre-debit notice rule. Aegis does. The one thing we'd build next: a predictive at-risk scorer — flag mandates before they fail, not after." |
 
 ---
@@ -40,7 +40,7 @@ Final action: ESCALATE_TO_HUMAN
 ```
 
 **Narration (verbatim option):**
-> "Claude proposed a retry. Our compliance gate overrode it. The override is in the audit log — immutable, timestamped, with the rule that triggered it cited. This is the answer to: 'how do you know the AI can't do something it's not supposed to?' The compliance gate is deterministic code, tested with unit tests that prove it cannot be bypassed."
+> "Groq (Llama) proposed a retry. Our compliance gate overrode it. The override is in the audit log — immutable, timestamped, with the rule that triggered it cited. This is the answer to: 'how do you know the AI can't do something it's not supposed to?' The compliance gate is deterministic code, tested with unit tests that prove it cannot be bypassed."
 
 ---
 

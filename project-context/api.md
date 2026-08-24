@@ -34,10 +34,24 @@ Body: file (CSV, headers matching MandateEvent schema)
 ```json
 {
   "batch_id": "uuid-string",
-  "status": "processing",
-  "record_count": 52
+  "status": "complete",
+  "record_count": 52,
+  "parse_errors": [],
+  "metrics": {
+    "total_records": 52,
+    "tier1_count": 37,
+    "tier2_count": 15,
+    "tier1_pct": 71.2,
+    "recovery_rate": 0.654,
+    "rs_recovered": 234500,
+    "rs_at_risk": 512000,
+    "compliance_violations_caught": 3,
+    "compliance_violations_executed": 0
+  }
 }
 ```
+
+> **Phase 9 note:** After Phase 9 is implemented, the `POST /api/v1/recovery/batch` endpoint still returns synchronously for CSV uploads. The `/webhooks/razorpay` endpoint changes to `{ status: "queued", job_id }` (async) — see the webhook section below.
 
 **CSV Headers:**
 ```
@@ -108,7 +122,7 @@ is_revocable, attempt_number, timestamp
   },
   "final_action": "ESCALATE_TO_HUMAN",
   "outcome": "escalated",
-  "rationale": "Claude proposed RETRY_AFTER_BACKOFF; compliance gate rejected",
+  "rationale": "Groq (Llama) proposed RETRY_AFTER_BACKOFF; compliance gate rejected",
   "confidence": 0.72,
   "hinglish_message": "Aapka EMI payment ke baare mein hamare team se baat karein.",
   "alternatives_considered": ["SEND_HINGLISH_NUDGE", "NO_ACTION_MONITORING"],
@@ -203,7 +217,11 @@ is_revocable, attempt_number, timestamp
 
 ### `POST /webhooks/razorpay`
 
-**Description:** Receives Razorpay subscription lifecycle webhook events. Validates HMAC signature using `RAZORPAY_WEBHOOK_SECRET`.
+**Description:** Receives Razorpay subscription lifecycle webhook events. Validates HMAC signature.
+
+**Phase 1–8 (single-tenant):** Validates HMAC using `RAZORPAY_WEBHOOK_SECRET` env var and processes inline.
+
+**Phase 9 (multi-tenant):** Validates HMAC against per-tenant encrypted secret (iterates active tenants). On match, enqueues an ARQ job and returns `200 OK` in < 1 second. Does not process inline. Response shape: `{ status: "queued", job_id: "...", event: "payment.failed" }`.
 
 **Razorpay Webhook Events:**
 

@@ -20,6 +20,13 @@
 | Config loader | PyYAML | Latest |
 | Synthetic data | `faker` (`en_IN` locale) | Latest |
 | Testing | pytest, pytest-asyncio | Latest |
+| **Phase 9** | | |
+| Async job queue | ARQ (asyncio-native) | Latest |
+| Redis client | `redis[hiredis]` | 5.x |
+| Encryption | `cryptography` (Fernet) | Latest |
+| Structured logging | `structlog` | Latest |
+| Prometheus metrics | `prometheus-fastapi-instrumentator` | Latest |
+| HTTP client (callbacks) | `httpx` (async) | Latest |
 
 ### Database
 
@@ -34,8 +41,8 @@
 
 | Component | Technology |
 |---|---|
-| Framework | React 18 with TypeScript (preferred) |
-| Charts | Recharts or Chart.js |
+| Framework | React 18 with TypeScript |
+| Charts | Recharts |
 | File upload | react-dropzone |
 | Alternative | Streamlit (faster to build if solo; use if React takes more than 2 days) |
 
@@ -133,6 +140,25 @@ npm run dev
 # Dashboard available at http://localhost:3000
 ```
 
+### 7. Start the ARQ worker (Phase 9 only)
+
+Phase 9 requires a separate ARQ worker process running alongside the API server to process async webhook events.
+
+```bash
+# In a second terminal (keep the API server running in the first)
+python -m arq workers.mandate_worker.WorkerSettings
+
+# The worker connects to Redis (REDIS_URL env var must be set)
+# It picks up jobs enqueued by POST /webhooks/razorpay and runs the pipeline
+```
+
+> For local development with both processes, use two terminals or a process manager like `honcho`:
+> ```bash
+> # Procfile
+> api: uvicorn api.main:app --reload --port 8000
+> worker: python -m arq workers.mandate_worker.WorkerSettings
+> ```
+
 ---
 
 ## Environment Variables
@@ -197,6 +223,22 @@ ENVIRONMENT=development      # development | production
 LOG_LEVEL=DEBUG              # DEBUG | INFO | WARNING | ERROR
 ```
 
+### Phase 9 — Production Hardening
+
+These variables are only required when Phase 9 (multi-tenancy, async queue, observability) is active.
+
+```bash
+# Fernet master key for encrypting tenant Razorpay credentials at rest
+# Generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+AEGIS_MASTER_ENCRYPTION_KEY=your_fernet_key_here
+
+# Redis connection string (used by ARQ job queue and Tier-2 rate limiter)
+REDIS_URL=redis://localhost:6379/0
+
+# Prometheus metrics endpoint (set to 0 to disable)
+PROMETHEUS_ENABLED=1
+```
+
 ---
 
 ## Code Organisation — Key Rules
@@ -213,6 +255,8 @@ LOG_LEVEL=DEBUG              # DEBUG | INFO | WARNING | ERROR
 
 ## Engineering Constraints (Hard Rules)
 
+| Constraint | Value | Rationale |
+|---|---|---|
 | Timeline | 13 build days | MVP delivery |
 | Failure categories modeled | Exactly 6 (the taxonomy) | Depth over breadth |
 | LLM on compliance decisions | Not permitted | Compliance gate is unconditional deterministic code |

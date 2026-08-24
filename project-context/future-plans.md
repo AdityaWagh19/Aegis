@@ -122,7 +122,9 @@ def score_atrisk(model: LogisticRegression, event: MandateEvent) -> float:
 
 **What:** Aegis becomes a module within Razorpay's Subscription Recovery Agent product.
 
-**Integration points:**
+> **Note on integration sequencing:** Phase 9 of the current build implements the **sidecar integration model** — Aegis is a standalone multi-tenant service that NBFCs connect to via a single webhook URL. This is the recommended first production deployment. The Razorpay product embedding described here is a later-stage partnership scenario (post-commercial traction), not the initial go-to-market architecture. See `project-context/architecture.md` Production Architecture section for the sidecar model detail.
+
+**Integration points (partnership scenario):**
 - Dashboard embedded in Razorpay's merchant portal (not a standalone app)
 - Compliance config editable from the Razorpay merchant dashboard
 - Mandate event ingestion via native Razorpay webhook subscription (no CSV upload)
@@ -139,7 +141,7 @@ From Master_Aegis.md §32:
 Assumption: Generate 500 records; hold out 100 (20%). This gives a statistically meaningful evaluation set for the six categories.
 
 **Q2 — AFA threshold for e-NACH SIPs:**
-Assumption: Add a `product_category` field to `MandateEvent` (values: `"subscription"`, `"loan_emi"`, `"sip"`, `"insurance"`). AFA threshold is looked up from `compliance_config.yaml` based on this field. If absent, default to `afa_threshold_general`. See `compliance.md` for the gate implementation.
+**Resolved.** `product_category` field added to `MandateEvent`. AFA threshold is looked up from `compliance_config.yaml` based on this field. If absent, default to `afa_threshold_general`. See `compliance.md` (AFA Threshold Detection — Resolved section) for full detail and the gate implementation.
 
 **Q3 — Hinglish message visibility:**
 Assumption: Show Hinglish message preview for any case where the LLM drafted one, regardless of whether `SEND_HINGLISH_NUDGE` was the final action. This makes the Tier-2 reasoning visible even when the compliance gate changes the action.
