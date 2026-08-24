@@ -15,3 +15,9 @@ venv/
 data/synthetic.csv
 *.log
 notification_log.jsonl
+
+# Local-only design source schemas (consolidated into project-context/design.md)
+DESIGN.md
+tokens.json
+variables.css
+theme.css
