@@ -300,6 +300,51 @@
 
 ---
 
+## Phase 10 — Real-Money End-to-End Demo (Post-Phase 9)
+
+> See `plans/phase-10-real-money-demo.md` for the full specification.
+
+### 10.1 — Razorpay Seeding
+
+- [ ] `scripts/seed_razorpay.py` — creates real test Plans + Subscriptions, prints IDs
+- [ ] Verify `payment.failed` webhook received from Razorpay → ARQ worker processes it
+
+### 10.2 — Live Demo Batch
+
+- [ ] `scripts/make_live_demo_batch.py` — generates CSV with REAL subscription IDs
+- [ ] `data/live_demo_batch.csv` committed
+
+### 10.3 — Webhook Registration + Payment Captured Handler
+
+- [ ] `scripts/register_webhook.py` — registers webhook URL in Razorpay
+- [ ] `api/routes/webhooks.py` updated — `payment.captured` handler updates outcome to `recovered`
+
+### 10.4 — Dashboard Live Recovery Ticker
+
+- [ ] `dashboard/src/pages/app/Dashboard.tsx` updated — Rs. recovered stat with 10s auto-refresh
+
+### 10.5 — End-to-End Proof Test
+
+- [ ] `tests/integration/test_live_recovery.py` — full cycle (skipped in CI, run manually)
+
+### 10.6 — Demo Rehearsal
+
+- [ ] `scripts/rehearse_live_demo.sh` — step-by-step rehearsal script
+- [ ] `project-context/demo.md` updated with live recovery beat
+
+### Phase 10 Acceptance Criteria
+
+- [ ] Razorpay sends `payment.failed` webhook → Aegis processes it
+- [ ] Aegis executes action against a REAL subscription ID
+- [ ] Payment Link opens on phone → test payment completes
+- [ ] `payment.captured` webhook received → outcome updated to `recovered`
+- [ ] Dashboard `Rs. recovered` increments from 0 live on screen
+- [ ] Audit log contains full trail: webhook → decision → action → payment → recovery
+- [ ] `compliance_violations_executed == 0` still holds
+- [ ] Demo video captures the Rs. counter incrementing in real time
+
+---
+
 ## Stretch Goal (Only if MVP dashboard fully works by Day 10)
 
 - [ ] `synthetic/evaluator.py` — `build_atrisk_classifier()` logistic regression

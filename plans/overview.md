@@ -102,7 +102,7 @@ Mark phase status using the following states in this document:
 - [/] Phase 7: Dashboard *(implementation complete, build green; final visual QA pass pending)*
 - [/] Phase 8: Evaluation + Submission *(evaluation done — 0 violations executed; demo video + submission pending user)*
 - [ ] Phase 9: Production Hardening
-- [ ] Phase 9: Production Hardening
+- [ ] Phase 10: Real-Money End-to-End Demo
 
 ---
 
