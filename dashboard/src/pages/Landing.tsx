@@ -82,24 +82,25 @@ function PreviewPane({ tab }: { tab: number }) {
 
 export default function Landing() {
   const [tab, setTab] = useState(0);
-  useEffectOnce();
+
+  if (typeof document !== 'undefined') document.title = 'Aegis · Compliant mandate recovery';
 
   return (
     <MarketingLayout>
       {/* Hero */}
       <section className="mx-auto max-w-[1200px] px-16 pt-48 md:pt-96 pb-32 md:pb-64">
-        <span className="inline-block rounded-full border border-stone-border bg-pure-white px-12 py-4 text-[11px] md:text-[12px] text-warm-gray">
+        {/* Plain text label — no decorative pill wrapper (audit C1/DS1) */}
+        <p className="text-[11px] md:text-[12px] uppercase tracking-[0.025em] text-warm-gray font-medium">
           UPI Autopay × e-NACH recovery
-        </span>
+        </p>
         <h1 className="mt-16 md:mt-24 font-roobert font-normal text-[32px] md:text-[42px] lg:text-display leading-[1.15] md:leading-display tracking-[-0.5px] md:tracking-display text-ink-black max-w-[760px]">
           Failed mandates, diagnosed &amp; recovered —{' '}
           <span className="bg-sky-wash rounded-md px-8 text-cyan-edge">compliance-first</span> by
           design.
         </h1>
         <p className="mt-16 md:mt-24 text-[15px] md:text-body-lg leading-body-lg tracking-body-lg text-warm-gray max-w-[620px]">
-          Aegis tells you why each recurring payment failed and takes the one action NPCI and RBI
-          rules allow. Deterministic rules resolve most cases instantly; an LLM handles the rest —
-          and nothing it proposes can bypass compliance.
+          Diagnoses why each recurring payment failed and takes the one compliant action. Rules
+          resolve most cases instantly; an LLM handles the rest.
         </p>
         <div className="mt-24 md:mt-32 flex items-center gap-12 md:gap-16 flex-wrap">
           <Link
@@ -112,10 +113,10 @@ export default function Landing() {
             to="/docs"
             className="rounded-full border border-stone-border bg-transparent text-ink-black px-16 py-8 hover:bg-pure-white transition-colors"
           >
-            Read the docs
+            Docs
           </Link>
           <span className="text-[12px] md:text-[13px] text-warm-gray">
-            ★ Built on Razorpay Test Mode — zero live money moved
+            Razorpay Test Mode — no live money moved.
           </span>
         </div>
       </section>
@@ -148,6 +149,10 @@ export default function Landing() {
                 </button>
               ))}
             </div>
+            {/* Audit C8: Illustrative view caption */}
+            <p className="mt-12 text-center text-[11px] text-ash-gray">
+              Illustrative view — upload a batch to see live data.
+            </p>
           </div>
         </div>
       </section>
@@ -163,15 +168,15 @@ export default function Landing() {
           {[
             {
               t: 'Rules resolve ~70% instantly',
-              b: 'A deterministic Tier-1 engine classifies all six failure categories in microseconds — salary cycles, retry caps, AFA thresholds.',
+              b: 'A rule engine classifies all six failure categories instantly — salary cycles, retry caps, AFA thresholds. No LLM call, no latency.',
             },
             {
               t: 'An LLM handles only the rest',
-              b: 'Ambiguous cases reach Groq with a fixed seven-action allow-list and structured output. It can explain and draft — not invent.',
+              b: 'Ambiguous cases go to an LLM that can only propose from a fixed list of actions — it explains and drafts, never invents.',
             },
             {
               t: 'Compliance cannot be bypassed',
-              b: 'Every proposed action passes a non-LLM gate enforcing NPCI AFA limits, retry caps and non-revocable escalation. Violations are caught, logged — and never executed.',
+              b: 'Every proposed action passes a compliance check enforcing NPCI and RBI rules. Violations are caught, logged, and never executed.',
             },
           ].map(c => (
             <article key={c.t} className="rounded-2xl border border-stone-border bg-pure-white p-24 shadow-md">
@@ -186,13 +191,13 @@ export default function Landing() {
       <section id="categories" className="mx-auto max-w-[1200px] px-16 pt-48 md:pt-96 scroll-mt-48">
         <h2 className="font-roobert font-normal text-[24px] md:text-heading-sm leading-tight md:leading-heading-sm tracking-heading-sm text-ink-black">
           Six failure categories.{' '}
-          <span className="bg-sky-wash rounded-md px-8 text-cyan-edge">Done properly.</span>
+          <span className="bg-sky-wash rounded-md px-8 text-cyan-edge">Fully modeled.</span>
         </h2>
         <p className="mt-16 text-[14px] text-warm-gray max-w-[560px]">
-          Depth over breadth: Aegis models exactly these six — the structurally Indian failure modes
-          no global dunning tool understands.
+          These six cover the most common failure modes on UPI Autopay and e-NACH. No global
+          dunning tool models them.
         </p>
-        <div className="mt-48 grid sm:grid-cols-2 lg:grid-cols-3 gap-16">
+        <div className="mt-24 md:mt-48 grid sm:grid-cols-2 lg:grid-cols-3 gap-16">
           {CATEGORIES.map(c => (
             <article key={c.code} className="rounded-lg border border-stone-border bg-pure-white p-24 shadow-subtle">
               <code className="text-[12px] font-medium text-ink-black">{c.code}</code>
@@ -214,17 +219,12 @@ export default function Landing() {
             "
           </p>
           <footer className="mt-16 text-[13px] text-warm-gray">
-            Compliance violations reaching execution across every test run:{' '}
-            <strong className="text-success">zero</strong> — asserted in tests, not promised in
-            slides.
+            Compliance violations reaching execution:{' '}
+            <strong className="text-success">zero</strong> — verified by automated tests on every
+            deployment.
           </footer>
         </blockquote>
       </section>
     </MarketingLayout>
   );
-}
-
-function useEffectOnce() {
-  // Sets the page title per route (kept inline to avoid extra deps).
-  if (typeof document !== 'undefined') document.title = 'Aegis · Compliant mandate recovery';
 }

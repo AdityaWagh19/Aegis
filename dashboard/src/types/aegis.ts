@@ -76,6 +76,10 @@ export interface AggregateMetrics {
   escalated_count: number;
   recovered_count: number;
   rs_recovered: number;
+  rs_at_risk: number;
+  auto_resolved_count: number;
+  auto_resolution_rate: number;
+  analyst_hours_saved: number;
   compliance_violations_caught: number;
   compliance_violations_executed: number;
   recovery_by_category: Record<string, number>;

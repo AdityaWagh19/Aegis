@@ -92,8 +92,7 @@ export default function Login() {
         </form>
 
         <p className="mt-24 text-[12px] text-warm-gray">
-          Demo build — sessions live only in your browser and no credentials are sent anywhere.
-          API-key authentication arrives with multi-tenancy (Phase 9).{' '}
+          Demo build — sessions live only in your browser and no credentials are sent anywhere.{' '}
           <Link to="/docs" className="text-cyan-edge hover:underline">
             Read the docs
           </Link>

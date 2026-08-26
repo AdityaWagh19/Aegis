@@ -9,8 +9,9 @@ import type { AggregateMetrics } from '../../types/aegis';
 import { fmtINR } from '../../lib/format';
 
 /**
- * Overview (/app) — answers "how much recovered and what needs a human?".
+ * Overview (/app) — answers "how much did we recover and what needs a human?"
  * Phase 10: live recovery ticker with 10s auto-refresh.
+ * Audit: Business Impact section with Rs. at Risk, Recovery Rate, Analyst Hours Saved.
  */
 export default function Dashboard() {
   const [metrics, setMetrics] = useState<AggregateMetrics | null>(null);
@@ -29,7 +30,7 @@ export default function Dashboard() {
   useEffect(() => {
     document.title = 'Overview · Aegis';
     load();
-    const interval = setInterval(load, 10_000); // Phase 10: auto-refresh every 10s
+    const interval = setInterval(load, 10_000);
     return () => clearInterval(interval);
   }, [load]);
 
@@ -62,42 +63,90 @@ export default function Dashboard() {
 
       {metrics && metrics.total_records > 0 && (
         <>
-          {/* Phase 10: Live Recovery Ticker — prominent */}
-          <section className="bg-pure-white rounded-lg border border-stone-border shadow-md p-24 md:p-32">
-            <p className="text-caption leading-caption font-medium uppercase tracking-[0.025em] text-warm-gray">
-              Live recovery
-            </p>
-            <p className="mt-8 font-roobert text-[36px] md:text-[48px] leading-none text-success tabular-nums">
-              {fmtINR(metrics.rs_recovered || 0)}
-            </p>
-            <p className="mt-8 text-[13px] text-warm-gray">
-              {metrics.recovered_count || 0} payment{metrics.recovered_count === 1 ? '' : 's'} recovered · auto-refreshes every 10s
-            </p>
-          </section>
-
-          {/* All-time stats */}
+          {/* Business Impact */}
           <section className="bg-pure-white rounded-lg border border-stone-border shadow-md p-16 md:p-24">
-            <h2 className="text-caption leading-caption font-medium uppercase tracking-[0.025em] text-warm-gray">
-              Recovery summary — all batches
+            <h2 className="text-caption leading-caption font-medium uppercase tracking-[0.025em] text-warm-gray mb-16">
+              Business impact
             </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-16 md:gap-24 mt-16">
-              <Stat label="Mandates" value={String(metrics.total_records)} />
-              <Stat label="Tier-1 resolved" value={String(metrics.tier1_count)} context={`${metrics.tier1_pct}% deterministic`} />
-              <Stat label="Executed" value={String(metrics.executed_count)} context="payment links created" />
-              <Stat label="Escalated" value={String(metrics.escalated_count)} context="sent to a human" />
-              <Stat
-                label="Violations caught"
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-16 md:gap-24">
+              <ImpactStat
+                label="Rs. Recovered"
+                value={fmtINR(metrics.rs_recovered || 0)}
+                context={`${metrics.recovered_count || 0} payment${metrics.recovered_count === 1 ? '' : 's'} captured`}
+                tone="success"
+              />
+              <ImpactStat
+                label="Rs. at Risk"
+                value={fmtINR(metrics.rs_at_risk || 0)}
+                context={`${metrics.total_records} failed mandates`}
+              />
+              <ImpactStat
+                label="Recovery Rate"
+                value={
+                  metrics.rs_at_risk > 0
+                    ? `${((metrics.rs_recovered || 0) / metrics.rs_at_risk * 100).toFixed(1)}%`
+                    : '0%'
+                }
+                context="of amount at risk"
+              />
+              <ImpactStat
+                label="Violations Prevented"
                 value={String(metrics.compliance_violations_caught)}
                 context={
                   metrics.compliance_violations_executed === 0
-                    ? 'executed: 0 ✓'
-                    : `executed: ${metrics.compliance_violations_executed} ⚠`
+                    ? '0 reached execution'
+                    : `${metrics.compliance_violations_executed} reached execution`
                 }
                 tone={metrics.compliance_violations_executed === 0 ? 'success' : 'danger'}
               />
             </div>
           </section>
 
+          {/* Efficiency */}
+          <section className="bg-pure-white rounded-lg border border-stone-border shadow-md p-16 md:p-24">
+            <h2 className="text-caption leading-caption font-medium uppercase tracking-[0.025em] text-warm-gray mb-16">
+              Operational efficiency
+            </h2>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-16 md:gap-24">
+              <ImpactStat
+                label="Auto-Resolved"
+                value={`${metrics.auto_resolution_rate || 0}%`}
+                context={`${metrics.auto_resolved_count || 0} of ${metrics.total_records} without human review`}
+              />
+              <ImpactStat
+                label="Analyst Hours Saved"
+                value={`${metrics.analyst_hours_saved || 0} hrs`}
+                context="15 min saved per auto-resolved mandate"
+              />
+              <ImpactStat
+                label="Escalation Rate"
+                value={`${metrics.total_records > 0 ? ((metrics.escalated_count / metrics.total_records) * 100).toFixed(1) : 0}%`}
+                context={`${metrics.escalated_count} routed to a human`}
+              />
+              <ImpactStat
+                label="Tier-1 Resolution"
+                value={`${metrics.tier1_pct}%`}
+                context={`${metrics.tier1_count} resolved by rules alone`}
+              />
+            </div>
+          </section>
+
+          {/* Live Recovery Ticker */}
+          <section className="bg-pure-white rounded-lg border border-stone-border shadow-md p-16 md:p-24">
+            <h2 className="text-caption leading-caption font-medium uppercase tracking-[0.025em] text-warm-gray mb-8">
+              Live recovery
+            </h2>
+            <p className="font-roobert text-[36px] md:text-[48px] leading-none text-success tabular-nums">
+              {fmtINR(metrics.rs_recovered || 0)}
+            </p>
+            <p className="mt-8 text-[13px] text-warm-gray">
+              {metrics.recovered_count > 0
+                ? `${metrics.recovered_count} payment${metrics.recovered_count === 1 ? '' : 's'} recovered · auto-refreshes every 10s`
+                : 'Awaiting first captured payment · auto-refreshes every 10s'}
+            </p>
+          </section>
+
+          {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 md:gap-24">
             <section className="bg-pure-white rounded-lg border border-stone-border shadow-md p-16 md:p-24">
               <h2 className="text-caption leading-caption font-medium uppercase tracking-[0.025em] text-warm-gray mb-16">
@@ -105,8 +154,8 @@ export default function Dashboard() {
               </h2>
               <TierSplitChart metrics={metrics} />
               <p className="mt-16 text-[12px] text-warm-gray">
-                Healthy operation keeps Tier-2 under ~30% of the batch — if it climbs, the rule
-                engine needs another rule, not a better prompt.
+                Healthy operation keeps LLM-routed cases under ~30%. Higher means more rules are
+                needed.
               </p>
             </section>
 
@@ -128,7 +177,7 @@ export default function Dashboard() {
   );
 }
 
-function Stat({
+function ImpactStat({
   label,
   value,
   context,
@@ -144,13 +193,15 @@ function Stat({
       <p className="text-caption leading-caption font-medium uppercase tracking-[0.025em] text-warm-gray">
         {label}
       </p>
-      <p className="font-roobert text-[24px] md:text-[28px] leading-none text-ink-black tabular-nums">{value}</p>
+      <p className={`font-roobert text-[24px] md:text-[28px] leading-none tabular-nums ${
+        tone === 'success' ? 'text-success' : tone === 'danger' ? 'text-danger' : 'text-ink-black'
+      }`}>
+        {value}
+      </p>
       {context && (
-        <p
-          className={`text-[12px] ${
-            tone === 'success' ? 'text-success' : tone === 'danger' ? 'text-danger' : 'text-warm-gray'
-          }`}
-        >
+        <p className={`text-[12px] ${
+          tone === 'success' ? 'text-success/70' : tone === 'danger' ? 'text-danger/70' : 'text-warm-gray'
+        }`}>
           {context}
         </p>
       )}

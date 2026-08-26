@@ -12,7 +12,7 @@ import { clearSession, getSession } from '../lib/auth';
 const NAV_ITEMS = [
   { to: '/app', label: 'Overview', end: true },
   { to: '/app/batch', label: 'Batches', end: false },
-  { to: '/app/audit', label: 'Audit trail', end: false },
+  { to: '/app/audit', label: 'Audit', end: false },
 ];
 
 export default function AppShell({ title, children }: { title: string; children: ReactNode }) {
