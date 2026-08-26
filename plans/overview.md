@@ -102,7 +102,7 @@ Mark phase status using the following states in this document:
 - [x] Phase 7: Dashboard *(visual QA passed — 33/33 checks)*
 - [x] Phase 8: Evaluation + Submission *(evaluation done — 0 violations executed)*
 - [x] Phase 9: Production Hardening
-- [ ] Phase 10: Real-Money End-to-End Demo
+- [x] Phase 10: Real-Money End-to-End Demo
 
 ---
 

@@ -87,21 +87,21 @@ export default function Landing() {
   return (
     <MarketingLayout>
       {/* Hero */}
-      <section className="mx-auto max-w-[1200px] px-16 pt-96 pb-64">
-        <span className="inline-block rounded-full border border-stone-border bg-pure-white px-12 py-4 text-[12px] text-warm-gray">
+      <section className="mx-auto max-w-[1200px] px-16 pt-48 md:pt-96 pb-32 md:pb-64">
+        <span className="inline-block rounded-full border border-stone-border bg-pure-white px-12 py-4 text-[11px] md:text-[12px] text-warm-gray">
           UPI Autopay × e-NACH recovery
         </span>
-        <h1 className="mt-24 font-roobert font-normal text-display leading-display tracking-display text-ink-black max-w-[760px]">
+        <h1 className="mt-16 md:mt-24 font-roobert font-normal text-[32px] md:text-[42px] lg:text-display leading-[1.15] md:leading-display tracking-[-0.5px] md:tracking-display text-ink-black max-w-[760px]">
           Failed mandates, diagnosed &amp; recovered —{' '}
           <span className="bg-sky-wash rounded-md px-8 text-cyan-edge">compliance-first</span> by
           design.
         </h1>
-        <p className="mt-24 text-body-lg leading-body-lg tracking-body-lg text-warm-gray max-w-[620px]">
+        <p className="mt-16 md:mt-24 text-[15px] md:text-body-lg leading-body-lg tracking-body-lg text-warm-gray max-w-[620px]">
           Aegis tells you why each recurring payment failed and takes the one action NPCI and RBI
           rules allow. Deterministic rules resolve most cases instantly; an LLM handles the rest —
           and nothing it proposes can bypass compliance.
         </p>
-        <div className="mt-32 flex items-center gap-16 flex-wrap">
+        <div className="mt-24 md:mt-32 flex items-center gap-12 md:gap-16 flex-wrap">
           <Link
             to="/login"
             className="rounded-full bg-cyan-signal border border-cyan-edge text-pure-white font-medium px-16 py-8 hover:bg-cyan-edge transition-colors"
@@ -114,7 +114,7 @@ export default function Landing() {
           >
             Read the docs
           </Link>
-          <span className="text-[13px] text-warm-gray ml-8">
+          <span className="text-[12px] md:text-[13px] text-warm-gray">
             ★ Built on Razorpay Test Mode — zero live money moved
           </span>
         </div>
@@ -153,13 +153,13 @@ export default function Landing() {
       </section>
 
       {/* How it works */}
-      <section id="how" className="mx-auto max-w-[1200px] px-16 pt-96 scroll-mt-48">
-        <h2 className="font-roobert font-normal text-heading-sm leading-heading-sm tracking-heading-sm text-ink-black">
+      <section id="how" className="mx-auto max-w-[1200px] px-16 pt-48 md:pt-96 scroll-mt-48">
+        <h2 className="font-roobert font-normal text-[24px] md:text-heading-sm leading-tight md:leading-heading-sm tracking-heading-sm text-ink-black">
           Three layers.{' '}
           <span className="bg-sky-wash rounded-md px-8 text-cyan-edge">One gate</span> that never
           sleeps.
         </h2>
-        <div className="mt-48 grid md:grid-cols-3 gap-16">
+        <div className="mt-24 md:mt-48 grid md:grid-cols-3 gap-16">
           {[
             {
               t: 'Rules resolve ~70% instantly',
@@ -183,8 +183,8 @@ export default function Landing() {
       </section>
 
       {/* Six failure categories */}
-      <section id="categories" className="mx-auto max-w-[1200px] px-16 pt-96 scroll-mt-48">
-        <h2 className="font-roobert font-normal text-heading-sm leading-heading-sm tracking-heading-sm text-ink-black">
+      <section id="categories" className="mx-auto max-w-[1200px] px-16 pt-48 md:pt-96 scroll-mt-48">
+        <h2 className="font-roobert font-normal text-[24px] md:text-heading-sm leading-tight md:leading-heading-sm tracking-heading-sm text-ink-black">
           Six failure categories.{' '}
           <span className="bg-sky-wash rounded-md px-8 text-cyan-edge">Done properly.</span>
         </h2>
@@ -204,9 +204,9 @@ export default function Landing() {
       </section>
 
       {/* Compliance promise */}
-      <section className="mx-auto max-w-[1200px] px-16 py-96">
+      <section className="mx-auto max-w-[1200px] px-16 py-48 md:py-96">
         <blockquote className="max-w-[720px]">
-          <p className="text-body-lg leading-body-lg text-ink-black">
+          <p className="text-[16px] md:text-body-lg leading-body-lg text-ink-black">
             "The rule engine decides. The LLM explains and drafts.{' '}
             <span className="bg-sky-wash rounded-md px-8 text-cyan-edge">
               Compliance is unconditional.

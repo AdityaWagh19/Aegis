@@ -74,6 +74,8 @@ export interface AggregateMetrics {
   tier1_pct: number;
   executed_count: number;
   escalated_count: number;
+  recovered_count: number;
+  rs_recovered: number;
   compliance_violations_caught: number;
   compliance_violations_executed: number;
   recovery_by_category: Record<string, number>;

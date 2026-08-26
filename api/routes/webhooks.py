@@ -64,19 +64,82 @@ def _handle_event(payload: dict, event_type: str, tenant_id: str = "default"):
         asyncio.ensure_future(_enqueue_payment_failed(tenant_id, payload))
         return {"status": "queued", "event": event_type, "tenant_id": tenant_id}
 
+    if event_type == "payment.captured":
+        # Phase 10: Update mandate outcome to "recovered" + write audit entry
+        import asyncio
+        asyncio.ensure_future(_handle_payment_captured(payload, tenant_id))
+        return {"status": "received", "event": event_type, "note": "Payment captured — recovery recorded."}
+
     # MVP mode: acknowledge without processing
     handled = {
         "payment.failed": "Mandate failure detected — will appear in next batch run.",
         "subscription.pending": "Subscription moved to pending.",
         "subscription.charged": "Subscription charged successfully.",
         "subscription.activated": "Subscription activated.",
-        "payment.captured": "Payment captured successfully.",
     }
 
     if event_type in handled:
         return {"status": "received", "event": event_type, "note": handled[event_type]}
 
     return {"status": "ignored", "event": event_type}
+
+
+async def _handle_payment_captured(payload: dict, tenant_id: str = "default"):
+    """
+    Handle payment.captured webhook (Phase 10).
+    Updates the mandate's RecoveryDecision outcome from "executed" to "recovered"
+    and writes an audit entry recording the successful recovery.
+    """
+    import uuid
+    from datetime import datetime, timezone
+    from sqlalchemy import select
+    from models.db import AsyncSessionLocal, RecoveryDecisionORM, AuditLogORM
+
+    try:
+        payment = payload.get("payload", {}).get("payment", {}).get("entity", {})
+        notes = payment.get("notes", {})
+        mandate_id = notes.get("mandate_id")
+        amount_inr = payment.get("amount", 0) // 100  # paise to rupees
+
+        if not mandate_id:
+            logger.warning("payment.captured: no mandate_id in notes — skipping recovery update")
+            return
+
+        async with AsyncSessionLocal() as db:
+            # Find the most recent decision for this mandate
+            stmt = (
+                select(RecoveryDecisionORM)
+                .where(RecoveryDecisionORM.mandate_id == mandate_id)
+                .order_by(RecoveryDecisionORM.decided_at.desc())
+            )
+            decision = (await db.execute(stmt)).scalars().first()
+
+            if decision and decision.outcome == "executed":
+                decision.outcome = "recovered"
+                logger.info(
+                    "Payment captured: mandate_id=%s amount=Rs.%d — outcome updated to 'recovered'",
+                    mandate_id, amount_inr
+                )
+
+            # Write audit entry
+            entry = AuditLogORM(
+                tenant_id=tenant_id,
+                mandate_id=mandate_id,
+                decision_id=decision.decision_id if decision else str(uuid.uuid4()),
+                timestamp=datetime.now(timezone.utc),
+                payload={
+                    "event": "payment_captured",
+                    "mandate_id": mandate_id,
+                    "amount": amount_inr,
+                    "razorpay_payment_id": payment.get("id"),
+                    "outcome": "recovered",
+                },
+            )
+            db.add(entry)
+            await db.commit()
+
+    except Exception as e:
+        logger.error("Error handling payment.captured: %s", e)
 
 
 async def _enqueue_payment_failed(tenant_id: str, payload: dict):
