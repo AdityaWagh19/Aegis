@@ -3,9 +3,15 @@
 Tier-1: Deterministic mandate failure rule engine.
 INVARIANT: This file must never import from core.tier2_agent, groq, or any LLM SDK.
 """
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
 from config.loader import load_config
 from models.mandate_event import MandateEvent, ALLOWED_ACTIONS
 from models.recovery_decision import Tier1Result
+
+if TYPE_CHECKING:
+    from config.loader import ComplianceConfig
 
 _cfg = load_config()
 _MAX_RETRIES = _cfg.max_retry_attempts
@@ -14,20 +20,35 @@ _AFA_SIP = _cfg.afa_threshold_sip_insurance
 _BORDERLINE_PCT = 0.10   # Within 10% below threshold = ambiguous
 
 
-def _get_afa_threshold(event: MandateEvent) -> int:
+def _get_afa_threshold(event: MandateEvent, config: ComplianceConfig | None = None) -> int:
+    if config:
+        afa_sip = config.afa_threshold_sip_insurance
+        afa_general = config.afa_threshold_general
+    else:
+        afa_sip = _AFA_SIP
+        afa_general = _AFA_GENERAL
     if event.product_category in ("sip", "insurance"):
-        return _AFA_SIP
-    return _AFA_GENERAL
+        return afa_sip
+    return afa_general
 
 
-def _max_attempts(event: MandateEvent) -> int:
-    return _MAX_RETRIES.UPI_AUTOPAY if event.mandate_type == "UPI_AUTOPAY" else _MAX_RETRIES.ENACH
+def _max_attempts(event: MandateEvent, config: ComplianceConfig | None = None) -> int:
+    if config:
+        max_upi = config.max_retry_attempts.UPI_AUTOPAY
+        max_enach = config.max_retry_attempts.ENACH
+    else:
+        max_upi = _MAX_RETRIES.UPI_AUTOPAY
+        max_enach = _MAX_RETRIES.ENACH
+    return max_upi if event.mandate_type == "UPI_AUTOPAY" else max_enach
 
 
-def classify(event: MandateEvent) -> Tier1Result:
+def classify(event: MandateEvent, config: ComplianceConfig | None = None) -> Tier1Result:
     """
     Classify a mandate failure event and return a deterministic action.
     Returns is_ambiguous=True when the case requires LLM reasoning.
+
+    When config is provided (Phase 9 multi-tenancy), uses per-tenant thresholds.
+    Otherwise falls back to module-level defaults from compliance_config.yaml.
     """
     code = event.decline_code
 
@@ -56,7 +77,7 @@ def classify(event: MandateEvent) -> Tier1Result:
 
     # --- AFA_REQUIRED ---
     if code == "AFA_REQUIRED":
-        threshold = _get_afa_threshold(event)
+        threshold = _get_afa_threshold(event, config)
         borderline_lower = threshold * (1 - _BORDERLINE_PCT)
         if event.amount >= threshold:
             return Tier1Result(
@@ -88,7 +109,7 @@ def classify(event: MandateEvent) -> Tier1Result:
 
     # --- BANK_TECHNICAL_DECLINE ---
     if code == "BANK_TECHNICAL_DECLINE":
-        max_att = _max_attempts(event)
+        max_att = _max_attempts(event, config)
         if event.attempt_number >= max_att:
             return Tier1Result(
                 action="ESCALATE_TO_HUMAN",

@@ -44,6 +44,11 @@ app.include_router(audit.router, prefix="/api/v1")
 app.include_router(human_review.router, prefix="/api/v1")
 app.include_router(webhooks.router)
 
+# Phase 9: Prometheus metrics endpoint
+if os.getenv("PROMETHEUS_ENABLED", "true").lower() in ("true", "1", "yes"):
+    from prometheus_fastapi_instrumentator import Instrumentator
+    Instrumentator().instrument(app).expose(app, include_in_schema=False)
+
 
 @app.get("/health")
 async def health():

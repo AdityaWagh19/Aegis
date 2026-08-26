@@ -2,7 +2,8 @@
 import logging
 from models.mandate_event import MandateEvent
 from services.razorpay_client import (
-    resume_subscription, pause_subscription, create_payment_link
+    resume_subscription, pause_subscription, create_payment_link,
+    RazorpayClient
 )
 from services.mock_notification import notification_service
 
@@ -16,31 +17,45 @@ async def execute(
     event: MandateEvent,
     final_action: str,
     hinglish_message: str | None = None,
+    razorpay_client: RazorpayClient | None = None,
 ) -> tuple[str, dict | None]:
     """
     Execute the approved recovery action.
     Returns (outcome, razorpay_response).
     outcome is one of: "executed", "mocked", "escalated", "failed"
+
+    When razorpay_client is provided (Phase 9 multi-tenancy), uses the per-tenant
+    client. Otherwise falls back to the global singleton functions.
     """
     logger.info("Executing action=%s for mandate_id=%s", final_action, event.mandate_id)
 
+    # Resolve per-tenant or global Razorpay functions
+    if razorpay_client:
+        _resume = razorpay_client.resume_subscription
+        _pause = razorpay_client.pause_subscription
+        _link = razorpay_client.create_payment_link
+    else:
+        _resume = resume_subscription
+        _pause = pause_subscription
+        _link = create_payment_link
+
     try:
         if final_action == "RETRY_AFTER_BACKOFF":
-            resp = await resume_subscription(event.mandate_id)
+            resp = await _resume(event.mandate_id)
             return "executed", resp
 
         elif final_action == "SCHEDULE_POST_SALARY":
-            resp = await pause_subscription(event.mandate_id)
+            resp = await _pause(event.mandate_id)
             return "executed", resp
 
         elif final_action == "SEND_UPI_INTENT_PUSH":
-            resp = await create_payment_link(event.amount, event.mandate_id, upi_intent=True)
+            resp = await _link(event.amount, event.mandate_id, upi_intent=True)
             if hinglish_message:
                 notification_service.send(event.customer_id, hinglish_message)
             return "executed", resp
 
         elif final_action == "SEND_MANDATE_RENEWAL_LINK":
-            resp = await create_payment_link(event.amount, event.mandate_id, upi_intent=False)
+            resp = await _link(event.amount, event.mandate_id, upi_intent=False)
             if hinglish_message:
                 notification_service.send(event.customer_id, hinglish_message)
             return "executed", resp

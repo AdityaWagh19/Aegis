@@ -108,15 +108,30 @@ You are advising a collections system. Be precise, concise, and always use the t
 """
 
 
-async def tier2_reason(event: MandateEvent) -> Tier2Result:
+async def tier2_reason(event: MandateEvent, tenant_id: str = "default", tier2_budget: int = 10) -> Tier2Result:
     """
     Call Groq to reason about an ambiguous mandate event.
     Returns Tier2Result. Falls back to ESCALATE_TO_HUMAN on any failure.
+    Phase 9: checks rate limiter budget, selects model, records Prometheus metrics.
     """
-    model = os.getenv("GROQ_MODEL_TIER2", "openai/gpt-oss-120b")
-    client = get_groq_client()
+    import time
+    from core.tier2_rate_limiter import select_model_for_tenant
+    from observability.metrics import tier2_calls_total, groq_latency_seconds
 
+    model = await select_model_for_tenant(tenant_id, tier2_budget)
+
+    if model is None:
+        logger.warning("Tier-2 skipped (budget exhausted): mandate_id=%s", event.mandate_id)
+        return Tier2Result(
+            action="ESCALATE_TO_HUMAN",
+            message_hinglish="Hamare system mein abhi thoda busy hai. Agent se baat karein.",
+            rationale="tier2_budget_exhausted",
+            confidence=0.0,
+        )
+
+    client = get_groq_client()
     user_message = _build_user_message(event)
+    start = time.perf_counter()
 
     try:
         response = await client.chat.completions.create(
@@ -135,6 +150,9 @@ async def tier2_reason(event: MandateEvent) -> Tier2Result:
         message = response.choices[0].message
         if not message.tool_calls:
             logger.warning("Tier-2: Groq returned no tool call for mandate_id=%s", event.mandate_id)
+            latency = time.perf_counter() - start
+            groq_latency_seconds.labels(tenant_id=tenant_id, model=model).observe(latency)
+            tier2_calls_total.labels(tenant_id=tenant_id, model=model, result="fallback").inc()
             return _fallback(event, "no_tool_call_returned")
 
         tool_call = message.tool_calls[0]
@@ -142,9 +160,12 @@ async def tier2_reason(event: MandateEvent) -> Tier2Result:
 
         try:
             result = Tier2Result(**args)
+            latency = time.perf_counter() - start
+            groq_latency_seconds.labels(tenant_id=tenant_id, model=model).observe(latency)
+            tier2_calls_total.labels(tenant_id=tenant_id, model=model, result="success").inc()
             logger.info(
-                "Tier-2: mandate_id=%s action=%s confidence=%.2f",
-                event.mandate_id, result.action, result.confidence
+                "Tier-2: mandate_id=%s action=%s confidence=%.2f model=%s",
+                event.mandate_id, result.action, result.confidence, model
             )
             return result
         except ValidationError as ve:
@@ -152,16 +173,24 @@ async def tier2_reason(event: MandateEvent) -> Tier2Result:
                 "Tier-2: Pydantic validation failed for mandate_id=%s: %s",
                 event.mandate_id, ve
             )
+            latency = time.perf_counter() - start
+            groq_latency_seconds.labels(tenant_id=tenant_id, model=model).observe(latency)
+            tier2_calls_total.labels(tenant_id=tenant_id, model=model, result="fallback").inc()
             return _fallback(event, "pydantic_validation_failed")
 
     except (APIError, APITimeoutError) as e:
         logger.error("Tier-2: Groq API error for mandate_id=%s: %s", event.mandate_id, e)
+        latency = time.perf_counter() - start
+        groq_latency_seconds.labels(tenant_id=tenant_id, model=model).observe(latency)
+        tier2_calls_total.labels(tenant_id=tenant_id, model=model, result="error").inc()
         return _fallback(event, "groq_api_error")
     except json.JSONDecodeError as e:
         logger.error("Tier-2: JSON decode error for mandate_id=%s: %s", event.mandate_id, e)
+        tier2_calls_total.labels(tenant_id=tenant_id, model=model, result="error").inc()
         return _fallback(event, "json_decode_error")
     except Exception as e:
         logger.error("Tier-2: Unexpected error for mandate_id=%s: %s", event.mandate_id, e, exc_info=True)
+        tier2_calls_total.labels(tenant_id=tenant_id, model=model, result="error").inc()
         return _fallback(event, "unexpected_error")
 
 

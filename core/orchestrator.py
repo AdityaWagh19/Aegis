@@ -15,13 +15,14 @@ from core.tier2_agent import tier2_reason
 from core.compliance_gate import ComplianceGate
 from core.action_executor import execute
 from audit.log import audit_log
+from observability.metrics import recovery_actions_total, compliance_violations_total
 
 logger = logging.getLogger(__name__)
 
 _gate = ComplianceGate()
 
 
-async def process_batch(events: list[MandateEvent]) -> BatchResult:
+async def process_batch(events: list[MandateEvent], tenant_id: str = "default") -> BatchResult:
     """
     Main entry point for batch processing.
     Wires Tier-1 -> Tier-2 (if needed) -> Compliance Gate -> Action Executor -> Audit Log.
@@ -38,8 +39,8 @@ async def process_batch(events: list[MandateEvent]) -> BatchResult:
     async with AsyncSessionLocal() as db:
         for event in events:
             event.batch_id = batch_id
-            await _persist_event(event, db)
-            decision = await _process_single(event, db)
+            await _persist_event(event, db, tenant_id=tenant_id)
+            decision = await _process_single(event, db, tenant_id=tenant_id)
             decisions.append(decision)
 
     metrics = _compute_metrics(events, decisions)
@@ -51,7 +52,95 @@ async def process_batch(events: list[MandateEvent]) -> BatchResult:
     )
 
 
-async def _persist_event(event: MandateEvent, db: AsyncSession) -> None:
+async def process_single_with_config(
+    event: MandateEvent,
+    compliance_cfg,
+    razorpay_client,
+    tenant_id: str,
+    db: AsyncSession,
+) -> RecoveryDecision:
+    """
+    Per-tenant version of _process_single() (Phase 9).
+    Uses injected compliance_cfg and razorpay_client instead of module-level singletons.
+    """
+    gate = ComplianceGate(config=compliance_cfg)
+    event.batch_id = event.batch_id or f"webhook_{tenant_id}"
+
+    await _persist_event(event, db, tenant_id=tenant_id)
+
+    # --- Tier-1 (with per-tenant config) ---
+    tier1_result = tier1_classify(event, config=compliance_cfg)
+
+    if tier1_result.is_ambiguous:
+        # --- Tier-2 (with rate limiter) ---
+        budget = getattr(compliance_cfg, "tier2_budget_per_minute", 10)
+        tier2_result = await tier2_reason(event, tenant_id=tenant_id, tier2_budget=budget)
+        proposed_action = tier2_result.action
+        tier_decided = 2
+        rationale = tier2_result.rationale
+        confidence = tier2_result.confidence
+        hinglish_message = tier2_result.message_hinglish
+        alternatives = tier2_result.alternatives_considered
+    else:
+        proposed_action = tier1_result.action
+        tier_decided = 1
+        rationale = tier1_result.reason
+        confidence = None
+        hinglish_message = None
+        alternatives = None
+
+    # --- Compliance Gate (always runs, per-tenant) ---
+    compliance_result = gate.check(event, proposed_action)
+    final_action = compliance_result.final_action
+
+    if compliance_result.violation_blocked:
+        logger.warning(
+            "Compliance violation blocked: mandate_id=%s proposed=%s rule=%s final=%s tenant_id=%s",
+            event.mandate_id, proposed_action,
+            compliance_result.violation_rule, final_action, tenant_id
+        )
+        compliance_violations_total.labels(
+            tenant_id=tenant_id, violation_rule=compliance_result.violation_rule or "unknown"
+        ).inc()
+
+    # --- Action Executor (with per-tenant Razorpay client) ---
+    outcome, razorpay_response = await execute(
+        event=event,
+        final_action=final_action,
+        hinglish_message=hinglish_message,
+        razorpay_client=razorpay_client,
+    )
+
+    # Prometheus counter
+    recovery_actions_total.labels(
+        tenant_id=tenant_id, action=final_action, outcome=outcome
+    ).inc()
+
+    # --- Escalation Queue ---
+    if outcome == "escalated":
+        await _add_to_review_queue(event, compliance_result.violation_rule, db, tenant_id=tenant_id)
+
+    decision = RecoveryDecision(
+        mandate_id=event.mandate_id,
+        tier_that_decided=tier_decided,
+        proposed_action=proposed_action,
+        compliance_result=compliance_result,
+        final_action=final_action,
+        outcome=outcome,
+        rationale=rationale,
+        confidence=confidence,
+        hinglish_message=hinglish_message,
+        alternatives_considered=alternatives,
+        razorpay_response=razorpay_response,
+    )
+
+    # --- Audit Log (with tenant attribution) ---
+    await audit_log.append(event, decision, db, tenant_id=tenant_id)
+
+    return decision
+
+
+async def _persist_event(event: MandateEvent, db: AsyncSession, tenant_id: str = "default") -> None:
     """
     Persist the MandateEvent before its decision is recorded.
 
@@ -63,6 +152,7 @@ async def _persist_event(event: MandateEvent, db: AsyncSession) -> None:
     await db.merge(
         MandateEventORM(
             mandate_id=event.mandate_id,
+            tenant_id=tenant_id,
             customer_id=event.customer_id,
             amount=event.amount,
             mandate_type=event.mandate_type,
@@ -81,13 +171,13 @@ async def _persist_event(event: MandateEvent, db: AsyncSession) -> None:
     await db.commit()
 
 
-async def _process_single(event: MandateEvent, db: AsyncSession) -> RecoveryDecision:
+async def _process_single(event: MandateEvent, db: AsyncSession, tenant_id: str = "default") -> RecoveryDecision:
     # --- Tier-1 ---
     tier1_result = tier1_classify(event)
 
     if tier1_result.is_ambiguous:
         # --- Tier-2 ---
-        tier2_result = await tier2_reason(event)
+        tier2_result = await tier2_reason(event, tenant_id=tenant_id)
         proposed_action = tier2_result.action
         tier_decided = 2
         rationale = tier2_result.rationale
@@ -112,13 +202,21 @@ async def _process_single(event: MandateEvent, db: AsyncSession) -> RecoveryDeci
             event.mandate_id, proposed_action,
             compliance_result.violation_rule, final_action
         )
+        compliance_violations_total.labels(
+            tenant_id=tenant_id, violation_rule=compliance_result.violation_rule or "unknown"
+        ).inc()
 
     # --- Action Executor ---
     outcome, razorpay_response = await execute(event, final_action, hinglish_message)
 
+    # Prometheus counter
+    recovery_actions_total.labels(
+        tenant_id=tenant_id, action=final_action, outcome=outcome
+    ).inc()
+
     # --- Escalation Queue ---
     if outcome == "escalated":
-        await _add_to_review_queue(event, compliance_result.violation_rule, db)
+        await _add_to_review_queue(event, compliance_result.violation_rule, db, tenant_id=tenant_id)
 
     decision = RecoveryDecision(
         mandate_id=event.mandate_id,
@@ -135,16 +233,17 @@ async def _process_single(event: MandateEvent, db: AsyncSession) -> RecoveryDeci
     )
 
     # --- Audit Log (every decision produces exactly one entry) ---
-    await audit_log.append(event, decision, db)
+    await audit_log.append(event, decision, db, tenant_id=tenant_id)
 
     return decision
 
 
-async def _add_to_review_queue(event: MandateEvent, compliance_rule: str | None, db: AsyncSession):
+async def _add_to_review_queue(event: MandateEvent, compliance_rule: str | None, db: AsyncSession, tenant_id: str = "default"):
     import uuid
     from datetime import datetime, timezone
     item = HumanReviewQueueORM(
         review_id=str(uuid.uuid4()),
+        tenant_id=tenant_id,
         mandate_id=event.mandate_id,
         reason=compliance_rule or "tier2_escalation",
         compliance_rule=compliance_rule,

@@ -31,10 +31,56 @@ def get_razorpay_client() -> razorpay.Client:
     return _client
 
 
+class RazorpayClient:
+    """
+    Per-tenant Razorpay client wrapper (Phase 9).
+    Accepts explicit credentials on initialization for multi-tenancy.
+    """
+    def __init__(self, key_id: str, key_secret: str):
+        if not key_id.startswith("rzp_test_"):
+            raise ValueError(
+                f"RAZORPAY_KEY_ID must start with 'rzp_test_'. Got: '{key_id[:12]}...'. "
+                "Live keys are not permitted."
+            )
+        self.key_id = key_id
+        self.key_secret = key_secret
+        self.client = razorpay.Client(auth=(key_id, key_secret))
+        logger.info("Razorpay client initialised for key: %s...", key_id[:16])
+
+    async def resume_subscription(self, subscription_id: str) -> dict:
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(
+            None,
+            lambda: self.client.subscription.resume(subscription_id, {"resume_at": "now"})
+        )
+
+    async def pause_subscription(self, subscription_id: str) -> dict:
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(
+            None,
+            lambda: self.client.subscription.pause(subscription_id, {"pause_at": "now"})
+        )
+
+    async def create_payment_link(self, amount: int, mandate_id: str, upi_intent: bool = False) -> dict:
+        loop = asyncio.get_running_loop()
+        payload = {
+            "amount": amount * 100,
+            "currency": "INR",
+            "description": f"Payment recovery — {mandate_id}",
+            "upi_link": upi_intent,
+            "notify": {"sms": False, "email": False},
+            "notes": {"mandate_id": mandate_id, "recovery_type": "UPI_INTENT" if upi_intent else "RENEWAL"},
+        }
+        return await loop.run_in_executor(
+            None,
+            lambda: self.client.payment_link.create(payload)
+        )
+
+
 async def resume_subscription(subscription_id: str) -> dict:
     """RETRY_AFTER_BACKOFF: Resume a paused subscription immediately."""
     client = get_razorpay_client()
-    loop = asyncio.get_running_loop()  # get_running_loop() is safe in async context; get_event_loop() is deprecated in 3.10+, crashes in 3.12
+    loop = asyncio.get_running_loop()
     try:
         result = await loop.run_in_executor(
             None,
@@ -50,7 +96,7 @@ async def resume_subscription(subscription_id: str) -> dict:
 async def pause_subscription(subscription_id: str) -> dict:
     """SCHEDULE_POST_SALARY: Pause a subscription to reschedule post-salary."""
     client = get_razorpay_client()
-    loop = asyncio.get_running_loop()  # get_running_loop() is the correct Python 3.10+ async-safe call
+    loop = asyncio.get_running_loop()
     try:
         result = await loop.run_in_executor(
             None,
@@ -66,7 +112,7 @@ async def pause_subscription(subscription_id: str) -> dict:
 async def create_payment_link(amount: int, mandate_id: str, upi_intent: bool = False) -> dict:
     """SEND_UPI_INTENT_PUSH / SEND_MANDATE_RENEWAL_LINK: Create a payment link."""
     client = get_razorpay_client()
-    loop = asyncio.get_running_loop()  # get_running_loop() is the correct Python 3.10+ async-safe call
+    loop = asyncio.get_running_loop()
     payload = {
         "amount": amount * 100,     # Paise
         "currency": "INR",

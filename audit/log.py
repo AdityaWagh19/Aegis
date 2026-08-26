@@ -21,6 +21,7 @@ class AuditLog:
         event: MandateEvent,
         decision: RecoveryDecision,
         db: AsyncSession,
+        tenant_id: str = "default",
     ) -> None:
         payload = {
             "mandate_id": event.mandate_id,
@@ -43,6 +44,7 @@ class AuditLog:
             "alternatives_considered": decision.alternatives_considered,
         }
         entry = AuditLogORM(
+            tenant_id=tenant_id,
             mandate_id=event.mandate_id,
             decision_id=str(uuid.uuid4()),
             timestamp=datetime.now(timezone.utc),
@@ -53,7 +55,7 @@ class AuditLog:
         # NOTE (Phase 9 migration): This commits once per mandate event (one round-trip per record).
         # For PostgreSQL at production scale, remove this per-record commit and instead batch-commit
         # all AuditLog entries at the end of process_batch() for a single round-trip per batch.
-        logger.debug("Audit entry written for mandate_id=%s", event.mandate_id)
+        logger.debug("Audit entry written for mandate_id=%s tenant_id=%s", event.mandate_id, tenant_id)
 
 
 # Module-level singleton
