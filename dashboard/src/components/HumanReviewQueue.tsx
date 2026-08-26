@@ -19,7 +19,7 @@ export default function HumanReviewQueue() {
       const data = await getHumanReview();
       setItems(data.items);
     } catch {
-      setError('Could not load the review queue. Is the API server running?');
+      setError('Could not load the review queue. Please try again shortly.');
     } finally {
       setLoading(false);
     }

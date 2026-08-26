@@ -1,5 +1,6 @@
 // Brand lockup: processed from the user's Aegis_web.png (transparent, cropped).
-// The mark + wordmark image replaces the previous inline SVG placeholder.
+// Uses inline styles for reliable sizing — our custom spacing scale doesn't
+// include odd-numbered steps (h-7 generates no CSS in Tailwind v4).
 const LOGO_SRC = "/aegis-logo.png";
 
 export function LogoGlyph({ size = 28 }: { size?: number }) {
@@ -20,7 +21,8 @@ export function Wordmark({ dark = false }: { dark?: boolean }) {
     <img
       src={LOGO_SRC}
       alt="Aegis"
-      className={`h-7 w-auto ${dark ? "opacity-95" : ""}`}
+      style={{ height: 28, width: 'auto' }}
+      className={dark ? "opacity-95" : ""}
     />
   );
 }

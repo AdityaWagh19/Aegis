@@ -23,7 +23,7 @@ export default function Dashboard() {
       setMetrics(data);
       setError(null);
     } catch {
-      setError('Could not reach the Aegis API. Start it with uvicorn on port 8000.');
+      setError('Could not reach the Aegis API. Please try again shortly.');
     }
   }, []);
 

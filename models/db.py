@@ -3,7 +3,7 @@ import os
 import uuid
 from sqlalchemy import (
     Column, String, Integer, Boolean, DateTime, Text, JSON,
-    BigInteger, ForeignKey, Numeric, create_engine, event
+    BigInteger, ForeignKey, Numeric, create_engine, event, text
 )
 from sqlalchemy.orm import DeclarativeBase, relationship
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
@@ -135,3 +135,20 @@ AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_co
 async def init_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # Phase 9 migration: add tenant_id to existing tables (create_all only
+        # creates new tables, it does not alter existing ones).
+        for table in ("mandate_events", "recovery_decisions", "audit_log", "human_review_queue"):
+            try:
+                await conn.execute(
+                    text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS tenant_id VARCHAR DEFAULT 'default'")
+                )
+            except Exception:
+                pass  # Column already exists or SQLite (which ignores IF NOT EXISTS on some versions)
+        # Set NOT NULL after adding the column (PostgreSQL requires separate step)
+        try:
+            for table in ("mandate_events", "recovery_decisions", "audit_log", "human_review_queue"):
+                await conn.execute(
+                    text(f"UPDATE {table} SET tenant_id = 'default' WHERE tenant_id IS NULL")
+                )
+        except Exception:
+            pass

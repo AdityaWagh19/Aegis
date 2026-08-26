@@ -57,22 +57,29 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
           </button>
         </div>
 
-        {/* Mobile menu */}
+        {/* Mobile menu with backdrop */}
         {menuOpen && (
-          <nav className="md:hidden border-t border-stone-border px-16 py-16 flex flex-col gap-4 bg-stone-canvas">
-            <a href="/#how" className={navLinkCls} onClick={() => setMenuOpen(false)}>Product</a>
-            <a href="/#categories" className={navLinkCls} onClick={() => setMenuOpen(false)}>Categories</a>
-            <NavLink to="/docs" className={navLinkCls} onClick={() => setMenuOpen(false)}>Docs</NavLink>
-            <div className="border-t border-stone-border my-8" />
-            <NavLink to="/login" className={navLinkCls} onClick={() => setMenuOpen(false)}>Sign in</NavLink>
-            <Link
-              to="/login"
-              className="rounded-full bg-cyan-signal border border-cyan-edge text-pure-white font-medium text-[14px] px-16 py-8 text-center mt-8"
+          <div className="md:hidden fixed inset-0 z-50" role="dialog" aria-modal="true">
+            <button
+              aria-label="Close menu"
+              className="absolute inset-0 bg-soot/20 cursor-default"
               onClick={() => setMenuOpen(false)}
-            >
-              Open console
-            </Link>
-          </nav>
+            />
+            <nav className="relative border-t border-stone-border px-16 py-16 flex flex-col gap-4 bg-stone-canvas shadow-xl">
+              <a href="/#how" className={navLinkCls} onClick={() => setMenuOpen(false)}>Product</a>
+              <a href="/#categories" className={navLinkCls} onClick={() => setMenuOpen(false)}>Categories</a>
+              <NavLink to="/docs" className={navLinkCls} onClick={() => setMenuOpen(false)}>Docs</NavLink>
+              <div className="border-t border-stone-border my-8" />
+              <NavLink to="/login" className={navLinkCls} onClick={() => setMenuOpen(false)}>Sign in</NavLink>
+              <Link
+                to="/login"
+                className="rounded-full bg-cyan-signal border border-cyan-edge text-pure-white font-medium text-[14px] px-16 py-8 text-center mt-8"
+                onClick={() => setMenuOpen(false)}
+              >
+                Open console
+              </Link>
+            </nav>
+          </div>
         )}
       </header>
 

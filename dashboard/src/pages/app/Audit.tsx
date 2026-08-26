@@ -37,7 +37,7 @@ export default function Audit() {
       setTotal(data.total);
       setPage(p);
     } catch {
-      setError('Could not load the audit log. Is the API server running?');
+      setError('Could not load the audit log. Please try again shortly.');
     } finally {
       setLoading(false);
     }

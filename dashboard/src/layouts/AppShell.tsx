@@ -67,12 +67,12 @@ export default function AppShell({ title, children }: { title: string; children:
       </nav>
 
       <div className="p-12 border-t border-stone-border flex flex-col gap-8">
-        <span className="self-start rounded-full border border-stone-border bg-pure-white text-info text-[11px] font-medium px-12 py-4">
+        <span className="self-start rounded-full border border-stone-border bg-pure-white text-info text-[11px] font-medium px-12 py-4 whitespace-nowrap">
           Test mode
         </span>
         <button
           onClick={handleSignOut}
-          className="self-start rounded-full border border-stone-border bg-transparent text-ink-black text-[13px] px-16 py-8 hover:border-stone-muted hover:bg-pure-white transition-colors"
+          className="self-start rounded-full border border-stone-border bg-transparent text-ink-black text-[13px] px-16 py-8 hover:border-stone-muted hover:bg-pure-white transition-colors whitespace-nowrap"
         >
           Sign out
         </button>
