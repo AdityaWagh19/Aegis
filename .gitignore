@@ -22,3 +22,7 @@ notification_log.jsonl
 /tokens.json
 /variables.css
 /theme.css
+
+# Screenshots
+Screenshot *.png
+WhatsApp Image *.jpeg
