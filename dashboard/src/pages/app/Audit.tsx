@@ -69,7 +69,8 @@ export default function Audit() {
           onChange={e => setQuery(e.target.value)}
           placeholder="Filter by mandate id…"
           aria-label="Filter audit entries"
-          className="w-64 rounded-[6px] border border-stone-muted bg-pure-white px-12 py-8 text-[13px] text-ink-black placeholder:text-warm-gray focus:outline-none focus:ring-2 focus:ring-cyan-signal"
+          className="w-full sm:w-auto rounded-[6px] border border-stone-muted bg-pure-white px-12 py-8 text-[13px] text-ink-black placeholder:text-warm-gray focus:outline-none focus:ring-2 focus:ring-cyan-signal"
+          style={{ minWidth: '200px' }}
         />
       </div>
 
@@ -118,7 +119,7 @@ export default function Audit() {
                     <td className="px-16 py-8 text-warm-gray whitespace-nowrap">{fmtDateTime(e.timestamp)}</td>
                     <td className="px-16 py-8 font-mono text-ink-black">{shortId(e.mandate_id)}</td>
                     <td className="px-16 py-8 tabular-nums text-ink-black">{tier ?? '—'}</td>
-                    <td className="px-16 py-8 text-warm-gray line-through decoration-ash-gray whitespace-nowrap">
+                    <td className={`px-16 py-8 whitespace-nowrap ${e.violation_blocked ? 'text-warm-gray line-through decoration-ash-gray' : 'text-warm-gray'}`}>
                       {proposed ? humanizeAction(proposed) : '—'}
                     </td>
                     <td className="px-16 py-8 text-ink-black whitespace-nowrap">

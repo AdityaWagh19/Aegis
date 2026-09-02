@@ -81,7 +81,7 @@ export default function MandateList({ decisions, onSelect }: Props) {
                 <td className="px-12 py-8">
                   <TierBadge tier={d.tier_that_decided} />
                 </td>
-                <td className="px-12 py-8 text-warm-gray line-through decoration-ash-gray">
+                <td className={`px-12 py-8 ${blocked ? 'text-warm-gray line-through decoration-ash-gray' : 'text-warm-gray'}`}>
                   {humanizeAction(d.proposed_action)}
                 </td>
                 <td className="px-12 py-8 text-ink-black">{humanizeAction(d.final_action)}</td>

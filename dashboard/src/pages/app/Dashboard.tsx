@@ -193,7 +193,7 @@ function ImpactStat({
       <p className="text-caption leading-caption font-medium uppercase tracking-[0.025em] text-warm-gray">
         {label}
       </p>
-      <p className={`font-roobert text-[24px] md:text-[28px] leading-none tabular-nums ${
+      <p className={`font-roobert text-[24px] sm:text-[28px] leading-none tabular-nums ${
         tone === 'success' ? 'text-success' : tone === 'danger' ? 'text-danger' : 'text-ink-black'
       }`}>
         {value}

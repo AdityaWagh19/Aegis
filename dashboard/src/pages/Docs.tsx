@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import MarketingLayout from '../layouts/MarketingLayout';
 
 const NAV = [
@@ -49,14 +50,16 @@ function CodeBlock({ children }: { children: string }) {
 }
 
 export default function Docs() {
-  if (typeof document !== 'undefined') document.title = 'Docs · Aegis';
+  useEffect(() => {
+    document.title = 'Docs · Aegis';
+  }, []);
 
   return (
     <MarketingLayout>
-      <div className="mx-auto max-w-[1200px] px-16 py-48 md:py-64 grid lg:grid-cols-[200px_1fr] gap-48">
-        {/* Anchor sidebar */}
+      <div className="mx-auto max-w-[1200px] px-16 py-48 md:py-64 pb-96 md:pb-160 grid lg:grid-cols-[200px_1fr] gap-48">
+        {/* Desktop anchor sidebar */}
         <aside className="hidden lg:block">
-          <nav className="sticky top-64 flex flex-col gap-4 border-l border-stone-border">
+          <nav className="sticky top-48 flex flex-col gap-4 border-l border-stone-border">
             {NAV.map(([id, label]) => (
               <a
                 key={id}
@@ -70,6 +73,25 @@ export default function Docs() {
         </aside>
 
         <article className="max-w-[720px] flex flex-col gap-32">
+          {/* Mobile table of contents — visible below lg breakpoint */}
+          <details className="lg:hidden rounded-lg border border-stone-border bg-pure-white overflow-hidden">
+            <summary className="px-16 py-12 text-[13px] font-medium text-ink-black cursor-pointer select-none flex items-center justify-between">
+              On this page
+              <span aria-hidden="true" className="text-warm-gray text-[10px]">▼</span>
+            </summary>
+            <nav className="px-16 pb-12 flex flex-col gap-4 border-t border-stone-border pt-8">
+              {NAV.map(([id, label]) => (
+                <a
+                  key={id}
+                  href={`#${id}`}
+                  className="py-4 text-[13px] text-warm-gray hover:text-ink-black transition-colors"
+                >
+                  {label}
+                </a>
+              ))}
+            </nav>
+          </details>
+
           <header>
             <h1 className="font-roobert font-normal text-heading-sm leading-heading-sm tracking-heading-sm text-ink-black">
               Aegis documentation

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import MarketingLayout from '../layouts/MarketingLayout';
 
@@ -83,7 +83,9 @@ function PreviewPane({ tab }: { tab: number }) {
 export default function Landing() {
   const [tab, setTab] = useState(0);
 
-  if (typeof document !== 'undefined') document.title = 'Aegis · Compliant mandate recovery';
+  useEffect(() => {
+    document.title = 'Aegis · Compliant mandate recovery';
+  }, []);
 
   return (
     <MarketingLayout>
@@ -93,7 +95,7 @@ export default function Landing() {
         <p className="text-[11px] md:text-[12px] uppercase tracking-[0.025em] text-warm-gray font-medium">
           UPI Autopay × e-NACH recovery
         </p>
-        <h1 className="mt-16 md:mt-24 font-roobert font-normal text-[32px] md:text-[42px] lg:text-display leading-[1.15] md:leading-display tracking-[-0.5px] md:tracking-display text-ink-black max-w-[760px]">
+        <h1 className="mt-16 md:mt-24 font-roobert font-normal text-[28px] md:text-[42px] lg:text-display leading-[1.15] md:leading-display tracking-[-0.5px] md:tracking-display text-ink-black max-w-[760px]">
           Failed mandates, diagnosed &amp; recovered —{' '}
           <span className="bg-sky-wash rounded-md px-8 text-cyan-edge">compliance-first</span> by
           design.
@@ -134,7 +136,7 @@ export default function Landing() {
               </span>
             </div>
             <PreviewPane tab={tab} />
-            <div className="mt-16 flex gap-8 justify-center">
+            <div className="mt-16 flex gap-8 justify-center flex-wrap">
               {['Overview', 'Decision trail', 'Overrides'].map((label, i) => (
                 <button
                   key={label}
@@ -209,7 +211,7 @@ export default function Landing() {
       </section>
 
       {/* Compliance promise */}
-      <section className="mx-auto max-w-[1200px] px-16 py-48 md:py-96">
+      <section className="mx-auto max-w-[1200px] px-16 py-48 md:py-96 pb-96 md:pb-160">
         <blockquote className="max-w-[720px]">
           <p className="text-[16px] md:text-body-lg leading-body-lg text-ink-black">
             "The rule engine decides. The LLM explains and drafts.{' '}

@@ -63,6 +63,7 @@ export interface AuditEntry {
   entry_id: number;
   mandate_id: string;
   timestamp: string;
+  violation_blocked?: boolean;
   [key: string]: unknown;
 }
 

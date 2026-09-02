@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import AppShell from '../../layouts/AppShell';
 import BatchUploader from '../../components/BatchUploader';
 import MetricCards from '../../components/MetricCards';
@@ -18,7 +18,9 @@ export default function Batch() {
   const [selected, setSelected] = useState<RecoveryDecision | null>(null);
   const [pollError, setPollError] = useState<string | null>(null);
 
-  useEffectTitle();
+  useEffect(() => {
+    document.title = 'Batches · Aegis';
+  }, []);
 
   const handleResult = (meta: BatchUploadResponse) => {
     setUploadMeta(meta);
@@ -119,6 +121,4 @@ export default function Batch() {
   );
 }
 
-function useEffectTitle() {
-  if (typeof document !== 'undefined') document.title = 'Batches · Aegis';
-}
+

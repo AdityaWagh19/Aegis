@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import type { RecoveryDecision } from '../types/aegis';
 import { humanizeAction, fmtPct, shortId } from '../lib/format';
 import HinglishMessagePreview from './HinglishMessagePreview';
@@ -13,6 +14,16 @@ interface Props {
  */
 export default function MandateDetailDrawer({ decision, onClose }: Props) {
   const open = decision !== null;
+
+  // Close on Escape — works even when focus is inside the drawer content.
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [open, onClose]);
 
   if (!open || !decision) return null;
 

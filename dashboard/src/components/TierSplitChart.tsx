@@ -1,4 +1,4 @@
-import { PieChart, Pie, Cell, Tooltip } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface Props {
   metrics: { tier1_count: number; tier2_count: number } | null;
@@ -17,23 +17,27 @@ export default function TierSplitChart({ metrics }: Props) {
 
   return (
     <div className="flex items-center gap-16 flex-wrap">
-      <PieChart width={240} height={200}>
-        <Pie
-          data={data}
-          cx={110}
-          cy={95}
-          innerRadius={48}
-          outerRadius={78}
-          dataKey="value"
-          stroke="#ffffff"
-          label={({ value }) => String(value)}
-        >
-          {data.map((entry, i) => (
-            <Cell key={entry.name} fill={COLORS[i % COLORS.length]} />
-          ))}
-        </Pie>
-        <Tooltip />
-      </PieChart>
+      <div style={{ width: '100%', maxWidth: 240, height: 200 }}>
+        <ResponsiveContainer width="100%" height={200}>
+          <PieChart>
+            <Pie
+              data={data}
+              cx="50%"
+              cy="50%"
+              innerRadius={48}
+              outerRadius={78}
+              dataKey="value"
+              stroke="#ffffff"
+              label={({ value }) => String(value)}
+            >
+              {data.map((entry, i) => (
+                <Cell key={entry.name} fill={COLORS[i % COLORS.length]} />
+              ))}
+            </Pie>
+            <Tooltip />
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
       <ul className="flex flex-col gap-8 text-[13px]">
         {data.map((d, i) => (
           <li key={d.name} className="flex items-center gap-8">

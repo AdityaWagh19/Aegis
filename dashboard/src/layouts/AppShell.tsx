@@ -113,7 +113,7 @@ export default function AppShell({ title, children }: { title: string; children:
             <span className="block w-20 h-[2px] bg-ink-black rounded-full" />
             <span className="block w-14 h-[2px] bg-ink-black rounded-full" />
           </button>
-          <h1 className="font-roobert text-[16px] text-ink-black">{title}</h1>
+          <h1 className="font-roobert text-[16px] text-ink-black truncate">{title}</h1>
           <div className="w-28" /> {/* Spacer for centering */}
         </header>
 

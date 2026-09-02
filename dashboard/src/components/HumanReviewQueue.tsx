@@ -87,45 +87,47 @@ export default function HumanReviewQueue() {
           </p>
         </div>
       ) : (
-        <table className="w-full text-[13px]">
-          <caption className="sr-only">Escalated mandates requiring human review</caption>
-          <thead>
-            <tr>
-              {['Mandate', 'Reason', 'Compliance rule', 'Raised', ''].map(h => (
-                <th
-                  key={h}
-                  scope="col"
-                  className={`text-left px-24 py-8 text-caption leading-caption font-medium uppercase tracking-[0.025em] text-warm-gray border-b border-stone-border ${
-                    h === '' ? 'sr-only' : ''
-                  }`}
-                >
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {items.map(item => (
-              <tr key={item.review_id} className="border-b border-stone-border last:border-b-0">
-                <td className="px-24 py-8 font-mono text-ink-black">{shortId(item.mandate_id)}</td>
-                <td className="px-24 py-8 text-ink-black">{item.reason}</td>
-                <td className="px-24 py-8 font-mono text-[12px] text-warning">
-                  {item.compliance_rule ?? '—'}
-                </td>
-                <td className="px-24 py-8 text-warm-gray">{fmtDateTime(item.created_at)}</td>
-                <td className="px-24 py-8 text-right">
-                  <button
-                    onClick={() => handleResolve(item.review_id)}
-                    disabled={resolving === item.review_id}
-                    className="rounded-full bg-cyan-signal border border-cyan-edge text-pure-white text-[12px] font-medium px-12 py-4 hover:bg-cyan-edge disabled:opacity-60 transition-colors"
+        <div className="overflow-x-auto">
+          <table className="w-full text-[13px] min-w-[640px]">
+            <caption className="sr-only">Escalated mandates requiring human review</caption>
+            <thead>
+              <tr>
+                {['Mandate', 'Reason', 'Compliance rule', 'Raised', ''].map(h => (
+                  <th
+                    key={h}
+                    scope="col"
+                    className={`text-left px-24 py-8 text-caption leading-caption font-medium uppercase tracking-[0.025em] text-warm-gray border-b border-stone-border ${
+                      h === '' ? 'sr-only' : ''
+                    }`}
                   >
-                    {resolving === item.review_id ? 'Resolving…' : 'Mark resolved'}
-                  </button>
-                </td>
+                    {h}
+                  </th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {items.map(item => (
+                <tr key={item.review_id} className="border-b border-stone-border last:border-b-0">
+                  <td className="px-24 py-8 font-mono text-ink-black">{shortId(item.mandate_id)}</td>
+                  <td className="px-24 py-8 text-ink-black">{item.reason}</td>
+                  <td className="px-24 py-8 font-mono text-[12px] text-warning">
+                    {item.compliance_rule ?? '—'}
+                  </td>
+                  <td className="px-24 py-8 text-warm-gray whitespace-nowrap">{fmtDateTime(item.created_at)}</td>
+                  <td className="px-24 py-8 text-right">
+                    <button
+                      onClick={() => handleResolve(item.review_id)}
+                      disabled={resolving === item.review_id}
+                      className="rounded-full bg-cyan-signal border border-cyan-edge text-pure-white text-[12px] font-medium px-12 py-4 hover:bg-cyan-edge disabled:opacity-60 transition-colors"
+                    >
+                      {resolving === item.review_id ? 'Resolving…' : 'Mark resolved'}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

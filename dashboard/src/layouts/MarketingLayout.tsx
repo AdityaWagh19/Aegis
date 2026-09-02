@@ -59,7 +59,7 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
 
         {/* Mobile menu with backdrop */}
         {menuOpen && (
-          <div className="md:hidden fixed inset-0 z-50" role="dialog" aria-modal="true">
+          <div className="md:hidden fixed inset-x-0 top-48 bottom-0 z-50" role="dialog" aria-modal="true">
             <button
               aria-label="Close menu"
               className="absolute inset-0 bg-soot/20 cursor-default"
@@ -86,19 +86,19 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
       <main className="flex-1">{children}</main>
 
       {/* Footer — stone-canvas with hairline border, column structure */}
-      <footer className="border-t border-stone-border bg-stone-canvas mt-96">
+      <footer className="border-t border-stone-border bg-stone-canvas">
         <div className="mx-auto max-w-[1200px] px-16 pt-48 pb-32">
-          <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-32 md:gap-64">
+          <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-0 md:gap-64">
             {/* Brand */}
-            <div className="flex flex-col gap-12">
-              <Wordmark />
+            <div className="flex flex-col gap-12 pb-32 md:pb-0">
+              <img src="/aegis-logo.png" alt="Aegis" style={{ height: 32, width: 'auto' }} />
               <p className="text-[13px] text-warm-gray max-w-[280px]">
                 Compliant recovery for UPI Autopay and e-NACH mandates.
               </p>
             </div>
 
             {/* Product */}
-            <div className="flex flex-col gap-8">
+            <div className="flex flex-col gap-8 py-32 md:py-0 border-t md:border-t-0 border-stone-border">
               <p className="text-[11px] font-medium uppercase tracking-[0.025em] text-ash-gray">
                 Product
               </p>
@@ -108,7 +108,7 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
             </div>
 
             {/* Resources */}
-            <div className="flex flex-col gap-8">
+            <div className="flex flex-col gap-8 py-32 md:py-0 border-t md:border-t-0 border-stone-border">
               <p className="text-[11px] font-medium uppercase tracking-[0.025em] text-ash-gray">
                 Resources
               </p>
