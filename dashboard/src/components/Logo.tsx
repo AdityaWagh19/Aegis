@@ -16,13 +16,13 @@ export function LogoGlyph({ size = 28 }: { size?: number }) {
   );
 }
 
-export function Wordmark({ dark = false }: { dark?: boolean }) {
+export function Wordmark({ dark = false, height = 28 }: { dark?: boolean; height?: number }) {
   return (
     <img
       src={LOGO_SRC}
       alt="Aegis"
-      style={{ height: 28, width: 'auto' }}
-      className={dark ? "opacity-95" : ""}
+      style={{ height, width: 'auto' }}
+      className={`self-start inline-block w-auto max-w-full object-contain ${dark ? "opacity-95" : ""}`}
     />
   );
 }

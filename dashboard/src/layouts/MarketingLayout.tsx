@@ -49,9 +49,9 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
               <span className="text-[18px] text-ink-black leading-none">✕</span>
             ) : (
               <>
-                <span className="block w-20 h-[2px] bg-ink-black rounded-full" />
-                <span className="block w-20 h-[2px] bg-ink-black rounded-full" />
-                <span className="block w-14 h-[2px] bg-ink-black rounded-full" />
+                <span className="block w-[20px] h-[2px] bg-ink-black rounded-full" />
+                <span className="block w-[20px] h-[2px] bg-ink-black rounded-full" />
+                <span className="block w-[14px] h-[2px] bg-ink-black rounded-full" />
               </>
             )}
           </button>
@@ -90,8 +90,10 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
         <div className="mx-auto max-w-[1200px] px-16 pt-48 pb-32">
           <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-0 md:gap-64">
             {/* Brand */}
-            <div className="flex flex-col gap-12 pb-32 md:pb-0">
-              <img src="/aegis-logo.png" alt="Aegis" style={{ height: 32, width: 'auto' }} />
+            <div className="flex flex-col items-start gap-12 pb-32 md:pb-0">
+              <Link to="/" aria-label="Aegis home" className="self-start inline-block">
+                <Wordmark />
+              </Link>
               <p className="text-[13px] text-warm-gray max-w-[280px]">
                 Compliant recovery for UPI Autopay and e-NACH mandates.
               </p>

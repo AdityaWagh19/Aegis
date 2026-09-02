@@ -95,7 +95,7 @@ export default function AppShell({ title, children }: { title: string; children:
             className="absolute inset-0 bg-soot/30 cursor-default"
             onClick={() => setDrawerOpen(false)}
           />
-          <aside className="absolute left-0 top-0 h-full w-64 bg-stone-canvas border-r border-stone-border shadow-xl flex flex-col">
+          <aside className="absolute left-0 top-0 h-full w-[260px] bg-stone-canvas border-r border-stone-border shadow-xl flex flex-col">
             {sidebarContent}
           </aside>
         </div>
@@ -109,9 +109,9 @@ export default function AppShell({ title, children }: { title: string; children:
             aria-label="Open menu"
             className="flex flex-col gap-4 p-8 -ml-8"
           >
-            <span className="block w-20 h-[2px] bg-ink-black rounded-full" />
-            <span className="block w-20 h-[2px] bg-ink-black rounded-full" />
-            <span className="block w-14 h-[2px] bg-ink-black rounded-full" />
+            <span className="block w-[20px] h-[2px] bg-ink-black rounded-full" />
+            <span className="block w-[20px] h-[2px] bg-ink-black rounded-full" />
+            <span className="block w-[14px] h-[2px] bg-ink-black rounded-full" />
           </button>
           <h1 className="font-roobert text-[16px] text-ink-black truncate">{title}</h1>
           <div className="w-28" /> {/* Spacer for centering */}

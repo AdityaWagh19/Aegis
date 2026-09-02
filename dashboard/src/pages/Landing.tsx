@@ -126,7 +126,7 @@ export default function Landing() {
       {/* Floating preview — the only shadow-xl surface on this page */}
       <section className="mx-auto max-w-[1200px] px-16 -mt-16">
         <div className="rounded-2xl bg-pure-white shadow-xl p-8">
-          <div className="rounded-xl border border-stone-border p-24">
+          <div className="rounded-xl border border-stone-border p-16 md:p-24">
             <div className="flex items-center justify-between mb-16">
               <p className="text-caption uppercase tracking-[0.025em] text-warm-gray font-medium">
                 Aegis console — live recovery view
@@ -141,7 +141,7 @@ export default function Landing() {
                 <button
                   key={label}
                   onClick={() => setTab(i)}
-                  className={`rounded-full px-16 py-8 text-[13px] transition-colors ${
+                  className={`rounded-full px-12 py-6 md:px-16 md:py-8 text-[12px] md:text-[13px] whitespace-nowrap transition-colors ${
                     tab === i
                       ? 'bg-soot text-pure-white'
                       : 'border border-stone-border text-ink-black hover:bg-stone-canvas'
