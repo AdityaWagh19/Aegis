@@ -6,12 +6,12 @@ INVARIANT: This file must never import from core.tier2_agent, groq, or any LLM S
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-from config.loader import load_config
+from core.config import load_config
 from models.mandate_event import MandateEvent, ALLOWED_ACTIONS
 from models.recovery_decision import Tier1Result
 
 if TYPE_CHECKING:
-    from config.loader import ComplianceConfig
+    from core.config import ComplianceConfig
 
 _cfg = load_config()
 _MAX_RETRIES = _cfg.max_retry_attempts

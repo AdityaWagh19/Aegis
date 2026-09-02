@@ -26,4 +26,7 @@ def _test_database():
     asyncio.run(init_db())
     yield
     if _TEST_DB.exists():
-        _TEST_DB.unlink()
+        try:
+            _TEST_DB.unlink()
+        except OSError:
+            pass

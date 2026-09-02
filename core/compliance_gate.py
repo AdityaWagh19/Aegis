@@ -10,7 +10,7 @@ INVARIANTS:
 """
 from models.mandate_event import MandateEvent, RETRY_ACTIONS
 from models.recovery_decision import ComplianceResult
-from config.loader import ComplianceConfig, load_config
+from core.config import ComplianceConfig, load_config
 
 
 class ComplianceGate:

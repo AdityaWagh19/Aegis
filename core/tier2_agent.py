@@ -15,7 +15,7 @@ from groq import APIError, APITimeoutError
 from models.mandate_event import MandateEvent
 from models.recovery_decision import Tier2Result
 from services.groq_client import get_groq_client
-from config.loader import load_config
+from core.config import load_config
 
 logger = logging.getLogger(__name__)
 

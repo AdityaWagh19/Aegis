@@ -1,4 +1,4 @@
-# config/loader.py
+# core/config.py
 import yaml
 from pathlib import Path
 from pydantic import BaseModel
@@ -47,8 +47,6 @@ def compliance_config_for_tenant(tenant_config):
     """
     Converts a TenantComplianceConfigSchema (from DB) to a ComplianceConfig
     compatible with the existing compliance gate and Tier-1 engine.
-    ComplianceConfig, MaxRetryAttempts, and load_config are already in scope
-    because this function is defined in config/loader.py.
     """
     return ComplianceConfig(
         afa_threshold_general=tenant_config.afa_threshold_general,

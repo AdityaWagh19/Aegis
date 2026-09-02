@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 
 from models.mandate_event import MandateEvent
 from models.recovery_decision import Tier1Result, Tier2Result
-from config.loader import ComplianceConfig, MaxRetryAttempts, SyntheticDistribution, compliance_config_for_tenant
+from core.config import ComplianceConfig, MaxRetryAttempts, SyntheticDistribution, compliance_config_for_tenant
 from models.tenant import TenantComplianceConfigSchema
 from core.compliance_gate import ComplianceGate
 

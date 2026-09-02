@@ -14,7 +14,7 @@ from core.tier1_engine import classify as tier1_classify
 from core.tier2_agent import tier2_reason
 from core.compliance_gate import ComplianceGate
 from core.action_executor import execute
-from audit.log import audit_log
+from core.audit import audit_log
 from observability.metrics import recovery_actions_total, compliance_violations_total
 
 logger = logging.getLogger(__name__)

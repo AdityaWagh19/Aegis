@@ -2,7 +2,7 @@
 
 # Aegis
 
-<img src="Aegis.jpg" alt="Aegis Platform" width="400" />
+<img src="assets/Aegis.jpg" alt="Aegis Platform" width="400" />
 
 **Compliant UPI Autopay and e-NACH Failure Diagnosis and Recovery Agent**
 
@@ -143,12 +143,9 @@ Aegis/
 ├── synthetic/
 │   ├── generator.py                # Synthetic dataset generator (500 records)
 │   └── evaluator.py                # Held-out evaluation harness (100 locked records)
+├── assets/                         # Brand assets, banners, and logos
 ├── dashboard/                      # React 18 + Vite + TypeScript web interface
-├── tests/
-│   ├── unit/                       # Unit tests for Tier-1, Compliance Gate, Tier-2, Auth
-│   └── integration/                # Full batch and multi-tenant pipeline tests
-├── plans/                          # Engineering specification (Phases 1 through 9)
-├── project-context/                # Architecture, compliance, API, and deployment docs
+├── docs/                           # Architecture, compliance, API, and deployment docs
 ├── compliance_config.yaml          # Default compliance parameters and distributions
 ├── docker-compose.yml              # Multi-service deployment (API, Worker, Postgres, Redis)
 ├── Dockerfile                      # Python 3.12-slim, uvicorn
@@ -216,7 +213,7 @@ npm run dev
 | `POST` | `/webhooks/razorpay` | Ingest Razorpay lifecycle events (HMAC-verified) |
 | `GET` | `/health` | Health check endpoint |
 
-Full request and response schemas with examples: [`project-context/api.md`](project-context/api.md)
+Full request and response schemas with examples: [`docs/api.md`](docs/api.md)
 
 ---
 
@@ -244,7 +241,7 @@ Full request and response schemas with examples: [`project-context/api.md`](proj
 | `INSUFFICIENT_FUNDS` | 14.9% | Composite cases where compliance gate redirects valid `SCHEDULE_POST_SALARY` on high-amount mandates |
 | `BANK_TECHNICAL_DECLINE` | 22.2% | Max-retry escalations counted against naive ground-truth labels |
 
-**Honest analysis:** The four non-composite categories score 100%. The lower rates on `INSUFFICIENT_FUNDS` and `BANK_TECHNICAL_DECLINE` are not misclassifications — they are the compliance gate correctly overriding proposals that would violate AFA thresholds or retry caps. The ground-truth labels represent the naive correct action without compliance constraints. The gate correctly overrides them, which the evaluation counts as a mismatch. The false-escalation rate similarly counts safety-first max-retry escalations against naive labels. The system is working as designed. See [`project-context/progress.md`](project-context/progress.md) for full analysis.
+**Honest analysis:** The four non-composite categories score 100%. The lower rates on `INSUFFICIENT_FUNDS` and `BANK_TECHNICAL_DECLINE` are not misclassifications — they are the compliance gate correctly overriding proposals that would violate AFA thresholds or retry caps. The ground-truth labels represent the naive correct action without compliance constraints. The gate correctly overrides them, which the evaluation counts as a mismatch. The false-escalation rate similarly counts safety-first max-retry escalations against naive labels. The system is working as designed. See [`docs/progress.md`](docs/progress.md) for full analysis.
 
 ---
 
@@ -285,15 +282,14 @@ Aegis deploys to a single EC2 instance (t3.micro, upgradeable to t3.medium) in *
 
 | Document | Description |
 |---|---|
-| [`project-context/context.md`](project-context/context.md) | Problem statement, personas, and domain glossary |
-| [`project-context/compliance.md`](project-context/compliance.md) | NPCI/RBI compliance rules, AFA detection, and gate specifications |
-| [`project-context/architecture.md`](project-context/architecture.md) | Database schemas, state machines, and Sidecar model |
-| [`project-context/api.md`](project-context/api.md) | Complete REST API contracts and webhook payloads |
-| [`project-context/dev-guide.md`](project-context/dev-guide.md) | Development environment setup, conventions, and dependencies |
-| [`project-context/test.md`](project-context/test.md) | Test plan, compliance test matrix, and evaluation protocol |
-| [`project-context/deploy.md`](project-context/deploy.md) | Production deployment with Docker Compose, Nginx, and EC2 |
-| [`project-context/tasks.md`](project-context/tasks.md) | Living task list mapped to the 9-phase engineering plan |
-| [`plans/overview.md`](plans/overview.md) | High-level phase dependency map and build rationale |
-| [`project-context/design.md`](project-context/design.md) | Design system tokens, components, and voice guidelines |
+| [`docs/context.md`](docs/context.md) | Problem statement, personas, and domain glossary |
+| [`docs/compliance.md`](docs/compliance.md) | NPCI/RBI compliance rules, AFA detection, and gate specifications |
+| [`docs/architecture.md`](docs/architecture.md) | Database schemas, state machines, and Sidecar model |
+| [`docs/api.md`](docs/api.md) | Complete REST API contracts and webhook payloads |
+| [`docs/dev-guide.md`](docs/dev-guide.md) | Development environment setup, conventions, and dependencies |
+| [`docs/test.md`](docs/test.md) | Test plan, compliance test matrix, and evaluation protocol |
+| [`docs/deploy.md`](docs/deploy.md) | Production deployment with Docker Compose, Nginx, and EC2 |
+| [`docs/tasks.md`](docs/tasks.md) | Living task list mapped to the 9-phase engineering plan |
+| [`docs/design.md`](docs/design.md) | Design system tokens, components, and voice guidelines |
 
 ---

@@ -9,7 +9,7 @@ PUB.mkdir(exist_ok=True)
 
 def process_web_lockup():
     """Aegis_web.png: blue mark + wordmark on black -> transparent, cropped, web-sized."""
-    img = Image.open(ROOT / "Aegis_web.png").convert("RGBA")
+    img = Image.open(ROOT / "assets" / "Aegis_web.png").convert("RGBA")
     px = img.load()
     w, h = img.size
     # Black background -> transparent (threshold catches anti-aliased edges)
@@ -30,12 +30,12 @@ def process_web_lockup():
 
 def process_favicon():
     """Aegis_logo.png: full-bleed mark -> square PNG at 256px for favicon."""
-    img = Image.open(ROOT / "Aegis_logo.png").convert("RGBA")
+    img = Image.open(ROOT / "assets" / "Aegis_logo.png").convert("RGBA")
     img = img.resize((256, 256), Image.LANCZOS)
     img.save(PUB / "favicon.png", optimize=True)
     print(f"favicon.png: {img.size}")
     # Also an apple-touch style 180px
-    img180 = Image.open(ROOT / "Aegis_logo.png").convert("RGBA").resize((180, 180), Image.LANCZOS)
+    img180 = Image.open(ROOT / "assets" / "Aegis_logo.png").convert("RGBA").resize((180, 180), Image.LANCZOS)
     img180.save(PUB / "apple-touch-icon.png", optimize=True)
     print("apple-touch-icon.png: (180, 180)")
 

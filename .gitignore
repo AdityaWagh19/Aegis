@@ -22,6 +22,7 @@ notification_log.jsonl
 /tokens.json
 /variables.css
 /theme.css
+/plans/
 
 # Screenshots
 Screenshot *.png

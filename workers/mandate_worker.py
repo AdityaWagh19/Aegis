@@ -23,7 +23,7 @@ async def process_payment_failed(ctx: dict, tenant_id: str, payload: dict) -> di
     from sqlalchemy import select
     from models.mandate_event import MandateEvent
     from core.orchestrator import process_single_with_config
-    from config.loader import compliance_config_for_tenant
+    from core.config import compliance_config_for_tenant
     from models.tenant import TenantComplianceConfigSchema, decrypt
     from services.razorpay_client import RazorpayClient
     from services.callback_service import CallbackService

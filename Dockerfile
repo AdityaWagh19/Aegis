@@ -10,9 +10,7 @@ COPY compliance_config.yaml ./
 COPY api/ api/
 COPY core/ core/
 COPY models/ models/
-COPY config/ config/
 COPY services/ services/
-COPY audit/ audit/
 COPY workers/ workers/
 COPY observability/ observability/
 
