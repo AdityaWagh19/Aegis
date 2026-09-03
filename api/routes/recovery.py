@@ -83,3 +83,23 @@ async def get_batch(batch_id: str):
     if batch_id not in _batch_cache:
         raise HTTPException(status_code=404, detail=f"Batch '{batch_id}' not found.")
     return _batch_cache[batch_id]
+
+
+@router.post("/recovery/reset")
+async def reset_demo_data():
+    """
+    Reset transaction data (decisions, events, audit log, batch jobs)
+    for a clean live demo run. Preserves tenant configurations.
+    """
+    from sqlalchemy import delete
+    from models.db import AuditLogORM, BatchJobORM
+    async with AsyncSessionLocal() as db:
+        await db.execute(delete(RecoveryDecisionORM))
+        await db.execute(delete(MandateEventORM))
+        await db.execute(delete(AuditLogORM))
+        await db.execute(delete(BatchJobORM))
+        await db.commit()
+    _batch_cache.clear()
+    logger.info("Demo database reset successfully.")
+    return {"status": "success", "message": "Demo data reset cleanly. Ready for new batch upload."}
+
