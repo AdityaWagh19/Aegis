@@ -1,5 +1,6 @@
 # models/db.py
 import os
+import logging
 import uuid
 from sqlalchemy import (
     Column, String, Integer, Boolean, DateTime, Text, JSON,
@@ -8,6 +9,8 @@ from sqlalchemy import (
 from sqlalchemy.orm import DeclarativeBase, relationship
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from datetime import datetime, timezone
+
+logger = logging.getLogger(__name__)
 
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./aegis.db")
@@ -153,19 +156,27 @@ async def init_db():
         except Exception:
             pass
 
-        # Seed default tenant if not exists so authenticated API calls succeed out of the box
-        try:
-            from models.tenant import hash_api_key
-            default_api_key = os.getenv("AEGIS_DEFAULT_API_KEY", "aegis_demo_key_2026")
-            key_hash = hash_api_key(default_api_key)
 
-            # Check if tenant_id = 'default' exists
-            res = await conn.execute(text("SELECT tenant_id FROM tenants WHERE tenant_id = 'default'"))
+# Seed default tenant in a separate committed session so FK constraints are satisfied
+async def _seed_default_tenant():
+    """
+    Ensures the 'default' tenant and its compliance config exist.
+    Must run AFTER init_db() tables are created.
+    Uses a separate session (and commits) to avoid mid-transaction FK violations.
+    """
+    from models.tenant import hash_api_key
+
+    default_api_key = os.getenv("AEGIS_DEFAULT_API_KEY", "aegis_demo_key_2026")
+    key_hash = hash_api_key(default_api_key)
+
+    try:
+        async with AsyncSessionLocal() as session:
+            # Step 1: upsert the tenant row
+            res = await session.execute(text("SELECT tenant_id FROM tenants WHERE tenant_id = 'default'"))
             row = res.first()
             if not row:
-                # Remove stale rows that might have the name 'Default Organization'
-                await conn.execute(text("DELETE FROM tenants WHERE name = 'Default Organization'"))
-                await conn.execute(
+                await session.execute(text("DELETE FROM tenants WHERE name = 'Default Organization'"))
+                await session.execute(
                     text(
                         "INSERT INTO tenants (tenant_id, name, api_key_hash, is_active, created_at) "
                         "VALUES ('default', 'Default Organization', :key_hash, true, CURRENT_TIMESTAMP)"
@@ -173,24 +184,56 @@ async def init_db():
                     {"key_hash": key_hash},
                 )
             else:
-                # Keep API key hash updated for demo/prod consistency
-                await conn.execute(
+                await session.execute(
                     text("UPDATE tenants SET api_key_hash = :key_hash, is_active = true WHERE tenant_id = 'default'"),
                     {"key_hash": key_hash},
                 )
+            await session.commit()  # Commit tenant row FIRST so FK is satisfied
 
-            # Ensure compliance config exists
-            cfg_res = await conn.execute(text("SELECT tenant_id FROM tenant_compliance_configs WHERE tenant_id = 'default'"))
+        async with AsyncSessionLocal() as session:
+            # Step 2: ensure compliance config (FK to tenants now committed)
+            cfg_res = await session.execute(
+                text("SELECT tenant_id FROM tenant_compliance_configs WHERE tenant_id = 'default'")
+            )
             if not cfg_res.first():
-                await conn.execute(
+                await session.execute(
                     text(
                         "INSERT INTO tenant_compliance_configs "
-                        "(tenant_id, afa_threshold_general, afa_threshold_sip_insurance, max_retry_upi_autopay, max_retry_enach, pre_debit_notice_window_hours, tier2_budget_per_minute, updated_at) "
+                        "(tenant_id, afa_threshold_general, afa_threshold_sip_insurance, "
+                        "max_retry_upi_autopay, max_retry_enach, pre_debit_notice_window_hours, "
+                        "tier2_budget_per_minute, updated_at) "
                         "VALUES ('default', 15000, 100000, 3, 2, 24, 10, CURRENT_TIMESTAMP)"
                     )
                 )
-        except Exception as e:
-            logger.warning("Error ensuring default tenant in init_db: %s", e)
+                await session.commit()
+
+        logger.info("Default tenant seeded/updated successfully.")
+    except Exception as e:
+        logger.warning("Could not seed default tenant: %s", e)
+
+
+async def init_db():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+        # Phase 9 migration: add tenant_id to existing tables
+        for table in ("mandate_events", "recovery_decisions", "audit_log", "human_review_queue"):
+            try:
+                await conn.execute(
+                    text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS tenant_id VARCHAR DEFAULT 'default'")
+                )
+            except Exception:
+                pass
+        try:
+            for table in ("mandate_events", "recovery_decisions", "audit_log", "human_review_queue"):
+                await conn.execute(
+                    text(f"UPDATE {table} SET tenant_id = 'default' WHERE tenant_id IS NULL")
+                )
+        except Exception:
+            pass
+
+    # Seed default tenant AFTER tables exist, in its own committed sessions
+    await _seed_default_tenant()
+
 
 
 

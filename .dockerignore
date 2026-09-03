@@ -7,7 +7,6 @@ notification_log.jsonl
 node_modules
 dashboard
 tests
-scripts
 docs
 plans
 project-context
