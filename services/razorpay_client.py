@@ -71,11 +71,14 @@ class RazorpayClient:
         customer_contact: str | None = None,
     ) -> dict:
         loop = asyncio.get_running_loop()
+        # Razorpay test mode rejects upi_link=True with 'UPI Payment Links is not supported in Test Mode'
+        # Standard payment links still render UPI checkout, cards, and send emails in test mode.
+        is_test_mode = self.key_id.startswith("rzp_test_")
         payload = {
             "amount": amount * 100,
             "currency": "INR",
             "description": f"Payment recovery — {mandate_id}",
-            "upi_link": upi_intent,
+            "upi_link": False if is_test_mode else upi_intent,
             "notify": {"sms": False, "email": bool(customer_email)},
             "notes": {"mandate_id": mandate_id, "recovery_type": "UPI_INTENT" if upi_intent else "RENEWAL"},
         }
@@ -134,11 +137,15 @@ async def create_payment_link(
     """SEND_UPI_INTENT_PUSH / SEND_MANDATE_RENEWAL_LINK: Create a payment link."""
     client = get_razorpay_client()
     loop = asyncio.get_running_loop()
+    # Razorpay test mode rejects upi_link=True with 'UPI Payment Links is not supported in Test Mode'
+    # Standard payment links still render UPI checkout, cards, and send emails in test mode.
+    key_id = os.getenv("RAZORPAY_KEY_ID", "")
+    is_test_mode = key_id.startswith("rzp_test_")
     payload = {
         "amount": amount * 100,     # Paise
         "currency": "INR",
         "description": f"Payment recovery — {mandate_id}",
-        "upi_link": upi_intent,
+        "upi_link": False if is_test_mode else upi_intent,
         "notify": {"sms": False, "email": bool(customer_email)},
         "notes": {"mandate_id": mandate_id, "recovery_type": "UPI_INTENT" if upi_intent else "RENEWAL"},
     }
