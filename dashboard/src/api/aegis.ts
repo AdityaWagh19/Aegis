@@ -8,6 +8,21 @@ import type { AggregateMetrics, AuditEntry, BatchResult, BatchUploadResponse, Hu
 const BASE = import.meta.env.VITE_API_BASE_URL || '';
 const api = axios.create({ baseURL: BASE, timeout: 60000 });
 
+// Default demo API key seeded in Aegis for out-of-the-box development and live demos
+const DEFAULT_DEMO_KEY = 'aegis_demo_key_2026';
+
+// Attach Authorization Bearer token to all outgoing API requests
+api.interceptors.request.use((config) => {
+  const token =
+    window.localStorage.getItem('aegis_api_key') ||
+    import.meta.env.VITE_AEGIS_API_KEY ||
+    DEFAULT_DEMO_KEY;
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 export async function uploadBatch(file: File): Promise<BatchUploadResponse> {
   const form = new FormData();
   form.append('file', file);

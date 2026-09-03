@@ -1,28 +1,36 @@
 # api/routes/metrics.py
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Depends
 from sqlalchemy import select, func
 from models.db import AsyncSessionLocal, AuditLogORM, MandateEventORM
+from models.tenant import TenantSchema
+from api.middleware.auth import get_tenant_from_request
 
 router = APIRouter()
 
 
 @router.get("/metrics")
-async def get_metrics(batch_id: str | None = Query(default=None)):
+async def get_metrics(
+    batch_id: str | None = Query(default=None),
+    tenant: TenantSchema = Depends(get_tenant_from_request),
+):
     """
-    Aggregate metrics across all decisions, or for a specific batch_id.
-    Reads from the audit_log and mandate_events tables.
-    Phase 10: includes rs_recovered from payment.captured events.
-    Audit: includes rs_at_risk, analyst_hours_saved, auto_resolution_rate.
+    Aggregate metrics across decisions for the authenticated tenant.
+    Reads from the audit_log and mandate_events tables scoped by tenant_id.
     """
     async with AsyncSessionLocal() as db:
-        # Audit entries (decisions + payment_captured events)
-        stmt = select(AuditLogORM)
+        # Audit entries scoped to calling tenant
+        stmt = select(AuditLogORM).where(AuditLogORM.tenant_id == tenant.tenant_id)
         entries = (await db.execute(stmt)).scalars().all()
 
-        # Total amount at risk from persisted mandate events
-        rs_at_risk_result = await db.execute(
+        # Total amount at risk from persisted mandate events scoped to tenant
+        rs_at_risk_query = (
             select(func.coalesce(func.sum(MandateEventORM.amount), 0))
+            .where(MandateEventORM.tenant_id == tenant.tenant_id)
         )
+        if batch_id:
+            rs_at_risk_query = rs_at_risk_query.where(MandateEventORM.batch_id == batch_id)
+
+        rs_at_risk_result = await db.execute(rs_at_risk_query)
         rs_at_risk = rs_at_risk_result.scalar() or 0
 
     payloads = [e.payload for e in entries]

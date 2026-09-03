@@ -3,7 +3,7 @@ import os
 import uuid
 from sqlalchemy import (
     Column, String, Integer, Boolean, DateTime, Text, JSON,
-    BigInteger, ForeignKey, Numeric, create_engine, event, text
+    BigInteger, ForeignKey, Numeric, create_engine, event, text, select
 )
 from sqlalchemy.orm import DeclarativeBase, relationship
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
@@ -152,3 +152,23 @@ async def init_db():
                 )
         except Exception:
             pass
+
+    # Seed default tenant if not exists so authenticated API calls succeed out of the box
+    async with AsyncSessionLocal() as session:
+        stmt = select(TenantORM).where(TenantORM.tenant_id == "default")
+        result = await session.execute(stmt)
+        default_tenant = result.scalars().first()
+        if not default_tenant:
+            from models.tenant import hash_api_key
+            default_api_key = os.getenv("AEGIS_DEFAULT_API_KEY", "aegis_demo_key_2026")
+            tenant = TenantORM(
+                tenant_id="default",
+                name="Default Organization",
+                api_key_hash=hash_api_key(default_api_key),
+                is_active=True,
+            )
+            config = TenantComplianceConfigORM(tenant_id="default")
+            session.add(tenant)
+            session.add(config)
+            await session.commit()
+

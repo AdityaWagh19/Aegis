@@ -29,6 +29,7 @@ async def get_tenant_from_request(request: Request) -> TenantSchema:
         tenant = _tenant_cache[key_hash]
         if tenant is None:
             raise HTTPException(status_code=403, detail="Invalid API key.")
+        request.state.tenant = tenant
         return tenant
 
     async with AsyncSessionLocal() as db:
@@ -71,5 +72,6 @@ async def get_tenant_from_request(request: Request) -> TenantSchema:
         compliance_config=compliance_cfg,
     )
     _tenant_cache[key_hash] = tenant
+    request.state.tenant = tenant
     logger.info("Tenant authenticated: %s (%s)", tenant.name, tenant.tenant_id)
     return tenant
