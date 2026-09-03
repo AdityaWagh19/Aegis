@@ -99,6 +99,12 @@ jobs:
             grep -q '^DEMO_CUSTOMER_EMAIL=' .env && sed -i 's/^DEMO_CUSTOMER_EMAIL=.*/DEMO_CUSTOMER_EMAIL=awagh5368+customer@gmail.com/' .env || echo "DEMO_CUSTOMER_EMAIL=awagh5368+customer@gmail.com" >> .env
             grep -q '^DEMO_CUSTOMER_PHONE=' .env && sed -i 's/^DEMO_CUSTOMER_PHONE=.*/DEMO_CUSTOMER_PHONE=+917397918047/' .env || echo "DEMO_CUSTOMER_PHONE=+917397918047" >> .env
             if [ -f alembic.ini ]; then docker compose run --rm api alembic upgrade head; fi
+            # Disk check and cleanup before build to prevent 'no space left on device'
+            echo "=== Disk usage before prune ==="
+            df -h /
+            docker system prune -f --volumes || true
+            echo "=== Disk usage after prune ==="
+            df -h /
             docker compose up --build -d
             sleep 3
             docker compose ps
