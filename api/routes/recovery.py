@@ -91,14 +91,21 @@ async def reset_demo_data():
     Reset transaction data (decisions, events, audit log, batch jobs)
     for a clean live demo run. Preserves tenant configurations.
     """
-    from sqlalchemy import delete
+    from sqlalchemy import delete, text
     from models.db import AuditLogORM, BatchJobORM
     async with AsyncSessionLocal() as db:
-        await db.execute(delete(RecoveryDecisionORM))
-        await db.execute(delete(MandateEventORM))
-        await db.execute(delete(AuditLogORM))
-        await db.execute(delete(BatchJobORM))
-        await db.commit()
+        try:
+            # PostgreSQL supports TRUNCATE ... CASCADE
+            await db.execute(text("TRUNCATE TABLE audit_log, recovery_decisions, mandate_events, batch_jobs CASCADE"))
+            await db.commit()
+        except Exception:
+            await db.rollback()
+            # SQLite fallback: child tables must be deleted before parent tables
+            await db.execute(delete(AuditLogORM))
+            await db.execute(delete(RecoveryDecisionORM))
+            await db.execute(delete(MandateEventORM))
+            await db.execute(delete(BatchJobORM))
+            await db.commit()
     _batch_cache.clear()
     logger.info("Demo database reset successfully.")
     return {"status": "success", "message": "Demo data reset cleanly. Ready for new batch upload."}
