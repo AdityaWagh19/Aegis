@@ -12,6 +12,8 @@ dashboard/.next/
 venv/
 .DS_Store
 *.db
+*.backup
+*.db.backup
 data/synthetic.csv
 *.log
 notification_log.jsonl

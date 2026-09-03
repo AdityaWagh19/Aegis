@@ -1,4 +1,4 @@
-# core/action_executor.py
+import os
 import logging
 from models.mandate_event import MandateEvent
 from services.razorpay_client import (
@@ -48,14 +48,26 @@ async def execute(
             resp = await _pause(event.mandate_id)
             return "executed", resp
 
-        elif final_action == "SEND_UPI_INTENT_PUSH":
-            resp = await _link(event.amount, event.mandate_id, upi_intent=True)
-            if hinglish_message:
-                notification_service.send(event.customer_id, hinglish_message)
-            return "executed", resp
+        elif final_action in ("SEND_UPI_INTENT_PUSH", "SEND_MANDATE_RENEWAL_LINK"):
+            upi_intent = (final_action == "SEND_UPI_INTENT_PUSH")
+            # For the designated live demo customer (CUST-LIVE*), attach presenter details for real email
+            is_live_demo = (
+                event.customer_id.startswith("CUST-LIVE") or 
+                "LIVE" in event.customer_id or
+                event.customer_id == "CUST-DEMO"
+            )
+            c_name = os.getenv("DEMO_CUSTOMER_NAME", "Valued Customer") if is_live_demo else None
+            c_email = os.getenv("DEMO_CUSTOMER_EMAIL") if is_live_demo else None
+            c_phone = os.getenv("DEMO_CUSTOMER_PHONE") if is_live_demo else None
 
-        elif final_action == "SEND_MANDATE_RENEWAL_LINK":
-            resp = await _link(event.amount, event.mandate_id, upi_intent=False)
+            resp = await _link(
+                event.amount,
+                event.mandate_id,
+                upi_intent=upi_intent,
+                customer_name=c_name,
+                customer_email=c_email,
+                customer_contact=c_phone,
+            )
             if hinglish_message:
                 notification_service.send(event.customer_id, hinglish_message)
             return "executed", resp

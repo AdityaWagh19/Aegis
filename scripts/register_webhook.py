@@ -27,7 +27,7 @@ def main(url: str):
 
     client = razorpay.Client(auth=(key_id, key_secret))
 
-    webhook = client.webhook.create({
+    webhook_payload = {
         "url": url,
         "active": True,
         "events": {
@@ -37,7 +37,12 @@ def main(url: str):
             "subscription.pending": True,
             "subscription.activated": True,
         },
-    })
+    }
+    webhook_secret = os.getenv("RAZORPAY_WEBHOOK_SECRET")
+    if webhook_secret:
+        webhook_payload["secret"] = webhook_secret
+
+    webhook = client.webhook.create(webhook_payload)
 
     print(f"Webhook registered successfully!")
     print(f"  ID:     {webhook['id']}")

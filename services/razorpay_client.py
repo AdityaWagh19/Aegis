@@ -61,16 +61,30 @@ class RazorpayClient:
             lambda: self.client.subscription.pause(subscription_id, {"pause_at": "now"})
         )
 
-    async def create_payment_link(self, amount: int, mandate_id: str, upi_intent: bool = False) -> dict:
+    async def create_payment_link(
+        self,
+        amount: int,
+        mandate_id: str,
+        upi_intent: bool = False,
+        customer_name: str | None = None,
+        customer_email: str | None = None,
+        customer_contact: str | None = None,
+    ) -> dict:
         loop = asyncio.get_running_loop()
         payload = {
             "amount": amount * 100,
             "currency": "INR",
             "description": f"Payment recovery — {mandate_id}",
             "upi_link": upi_intent,
-            "notify": {"sms": False, "email": False},
+            "notify": {"sms": False, "email": bool(customer_email)},
             "notes": {"mandate_id": mandate_id, "recovery_type": "UPI_INTENT" if upi_intent else "RENEWAL"},
         }
+        if customer_email or customer_contact:
+            payload["customer"] = {
+                "name": customer_name or "Valued Customer",
+                "email": customer_email or "",
+                "contact": customer_contact or "",
+            }
         return await loop.run_in_executor(
             None,
             lambda: self.client.payment_link.create(payload)
@@ -109,7 +123,14 @@ async def pause_subscription(subscription_id: str) -> dict:
         raise
 
 
-async def create_payment_link(amount: int, mandate_id: str, upi_intent: bool = False) -> dict:
+async def create_payment_link(
+    amount: int,
+    mandate_id: str,
+    upi_intent: bool = False,
+    customer_name: str | None = None,
+    customer_email: str | None = None,
+    customer_contact: str | None = None,
+) -> dict:
     """SEND_UPI_INTENT_PUSH / SEND_MANDATE_RENEWAL_LINK: Create a payment link."""
     client = get_razorpay_client()
     loop = asyncio.get_running_loop()
@@ -118,9 +139,15 @@ async def create_payment_link(amount: int, mandate_id: str, upi_intent: bool = F
         "currency": "INR",
         "description": f"Payment recovery — {mandate_id}",
         "upi_link": upi_intent,
-        "notify": {"sms": False, "email": False},
+        "notify": {"sms": False, "email": bool(customer_email)},
         "notes": {"mandate_id": mandate_id, "recovery_type": "UPI_INTENT" if upi_intent else "RENEWAL"},
     }
+    if customer_email or customer_contact:
+        payload["customer"] = {
+            "name": customer_name or "Valued Customer",
+            "email": customer_email or "",
+            "contact": customer_contact or "",
+        }
     try:
         result = await loop.run_in_executor(
             None,
