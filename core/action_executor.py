@@ -39,13 +39,21 @@ async def execute(
         _pause = pause_subscription
         _link = create_payment_link
 
+    is_real_razorpay = bool(event.mandate_id and event.mandate_id.startswith("sub_"))
+
     try:
         if final_action == "RETRY_AFTER_BACKOFF":
-            resp = await _resume(event.mandate_id)
+            if is_real_razorpay:
+                resp = await _resume(event.mandate_id)
+            else:
+                resp = {"status": "resumed", "simulated": True}
             return "executed", resp
 
         elif final_action == "SCHEDULE_POST_SALARY":
-            resp = await _pause(event.mandate_id)
+            if is_real_razorpay:
+                resp = await _pause(event.mandate_id)
+            else:
+                resp = {"status": "paused", "simulated": True}
             return "executed", resp
 
         elif final_action in ("SEND_UPI_INTENT_PUSH", "SEND_MANDATE_RENEWAL_LINK"):
@@ -56,18 +64,22 @@ async def execute(
                 "LIVE" in event.customer_id or
                 event.customer_id == "CUST-DEMO"
             )
-            c_name = os.getenv("DEMO_CUSTOMER_NAME", "Valued Customer") if is_live_demo else None
-            c_email = os.getenv("DEMO_CUSTOMER_EMAIL") if is_live_demo else None
-            c_phone = os.getenv("DEMO_CUSTOMER_PHONE") if is_live_demo else None
+            if is_live_demo or is_real_razorpay:
+                c_name = os.getenv("DEMO_CUSTOMER_NAME", "Valued Customer") if is_live_demo else None
+                c_email = os.getenv("DEMO_CUSTOMER_EMAIL") if is_live_demo else None
+                c_phone = os.getenv("DEMO_CUSTOMER_PHONE") if is_live_demo else None
 
-            resp = await _link(
-                event.amount,
-                event.mandate_id,
-                upi_intent=upi_intent,
-                customer_name=c_name,
-                customer_email=c_email,
-                customer_contact=c_phone,
-            )
+                resp = await _link(
+                    event.amount,
+                    event.mandate_id,
+                    upi_intent=upi_intent,
+                    customer_name=c_name,
+                    customer_email=c_email,
+                    customer_contact=c_phone,
+                )
+            else:
+                resp = {"short_url": f"https://rzp.io/i/{event.mandate_id}", "simulated": True}
+
             if hinglish_message:
                 notification_service.send(event.customer_id, hinglish_message)
             return "executed", resp

@@ -100,9 +100,14 @@ def main(subscription_ids: list[str], output: str):
     # -------------------------------------------------------------------------
     for i in range(35):
         cust_id = f"CUST-BTD-{i+1:03d}"
-        amount = random.choice([499, 999, 1499, 2999, 4500, 7500, 12000])
+        # First 5 records exceed Rs. 15,000 threshold to demonstrate Compliance Gate override (Rule 3)
+        if i < 5:
+            amount = random.choice([18500, 22000, 26000])
+            category = "subscription"
+        else:
+            amount = random.choice([499, 999, 1499, 2999, 4500, 7500, 12000])
+            category = random.choice(["subscription", "loan_emi", "sip", "insurance"])
         mandate_type = random.choice(["UPI_AUTOPAY", "UPI_AUTOPAY", "ENACH"])
-        category = random.choice(["subscription", "loan_emi", "sip", "insurance"])
         rows.append({
             "mandate_id": f"MAND-BTD-{uuid.uuid4().hex[:8].upper()}",
             "customer_id": cust_id,
@@ -123,11 +128,12 @@ def main(subscription_ids: list[str], output: str):
     # -------------------------------------------------------------------------
     # 4. INSUFFICIENT FUNDS (30 records):
     # Pre-salary shortfall -> rescheduled to post-salary date
+    # 28 instant Tier-1 (pre-salary), 2 ambiguous (late cycle -> Tier-2 Groq)
     # -------------------------------------------------------------------------
     for i in range(30):
         cust_id = f"CUST-NSF-{i+1:03d}"
         amount = random.choice([1200, 2500, 3800, 5000, 8500, 14000])
-        days_since = random.choice([1, 2, 3, 28, 29, 30])  # Near salary boundary
+        days_since = random.choice([1, 2, 3, 4, 5])
         rows.append({
             "mandate_id": f"MAND-NSF-{uuid.uuid4().hex[:8].upper()}",
             "customer_id": cust_id,
@@ -157,7 +163,7 @@ def main(subscription_ids: list[str], output: str):
             "customer_id": cust_id,
             "amount": amount,
             "mandate_type": "UPI_AUTOPAY",
-            "product_category": random.choice(["subscription", "sip", "insurance"]),
+            "product_category": "subscription",
             "decline_code": "AFA_REQUIRED",
             "days_since_salary_credit": random.randint(5, 15),
             "prior_bounce_count": 0,
