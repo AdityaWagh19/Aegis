@@ -155,11 +155,16 @@ async def init_db():
 
         # Seed default tenant if not exists so authenticated API calls succeed out of the box
         try:
+            from models.tenant import hash_api_key
+            default_api_key = os.getenv("AEGIS_DEFAULT_API_KEY", "aegis_demo_key_2026")
+            key_hash = hash_api_key(default_api_key)
+
+            # Check if tenant_id = 'default' exists
             res = await conn.execute(text("SELECT tenant_id FROM tenants WHERE tenant_id = 'default'"))
-            if not res.first():
-                from models.tenant import hash_api_key
-                default_api_key = os.getenv("AEGIS_DEFAULT_API_KEY", "aegis_demo_key_2026")
-                key_hash = hash_api_key(default_api_key)
+            row = res.first()
+            if not row:
+                # Remove stale rows that might have the name 'Default Organization'
+                await conn.execute(text("DELETE FROM tenants WHERE name = 'Default Organization'"))
                 await conn.execute(
                     text(
                         "INSERT INTO tenants (tenant_id, name, api_key_hash, is_active, created_at) "
@@ -167,13 +172,25 @@ async def init_db():
                     ),
                     {"key_hash": key_hash},
                 )
+            else:
+                # Keep API key hash updated for demo/prod consistency
+                await conn.execute(
+                    text("UPDATE tenants SET api_key_hash = :key_hash, is_active = true WHERE tenant_id = 'default'"),
+                    {"key_hash": key_hash},
+                )
+
+            # Ensure compliance config exists
+            cfg_res = await conn.execute(text("SELECT tenant_id FROM tenant_compliance_configs WHERE tenant_id = 'default'"))
+            if not cfg_res.first():
                 await conn.execute(
                     text(
-                        "INSERT INTO tenant_compliance_configs (tenant_id, afa_threshold_general, afa_threshold_sip_insurance, max_retry_upi_autopay, max_retry_enach, pre_debit_notice_window_hours, tier2_budget_per_minute, updated_at) "
+                        "INSERT INTO tenant_compliance_configs "
+                        "(tenant_id, afa_threshold_general, afa_threshold_sip_insurance, max_retry_upi_autopay, max_retry_enach, pre_debit_notice_window_hours, tier2_budget_per_minute, updated_at) "
                         "VALUES ('default', 15000, 100000, 3, 2, 24, 10, CURRENT_TIMESTAMP)"
                     )
                 )
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Error ensuring default tenant in init_db: %s", e)
+
 
 
