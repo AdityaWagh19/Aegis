@@ -33,9 +33,7 @@ def main(url: str):
         "events": {
             "payment.failed": True,
             "payment.captured": True,
-            "subscription.charged": True,
-            "subscription.pending": True,
-            "subscription.activated": True,
+            "payment.authorized": True,
         },
     }
     webhook_secret = os.getenv("RAZORPAY_WEBHOOK_SECRET")
