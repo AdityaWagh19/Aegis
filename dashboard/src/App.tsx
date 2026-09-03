@@ -5,6 +5,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/app/Dashboard';
 import Batch from './pages/app/Batch';
 import Audit from './pages/app/Audit';
+import UPIPay from './pages/pay/UPIPay';
 
 /**
  * Route table (design.md §5.2): public marketing + docs, demo-gated console.
@@ -17,6 +18,7 @@ export default function App() {
       <Route path="/" element={<Landing />} />
       <Route path="/docs" element={<Docs />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/pay/:mandate_id" element={<UPIPay />} />
       <Route path="/app" element={<Dashboard />} />
       <Route path="/app/batch" element={<Batch />} />
       <Route path="/app/audit" element={<Audit />} />

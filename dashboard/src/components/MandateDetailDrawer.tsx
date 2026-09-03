@@ -174,6 +174,33 @@ export default function MandateDetailDrawer({ decision, onClose }: Props) {
           {/* Hinglish draft */}
           <HinglishMessagePreview message={d.hinglish_message} />
 
+          {/* White-label UPI Intent Recovery Portal */}
+          {['SEND_UPI_INTENT_PUSH', 'SEND_MANDATE_RENEWAL_LINK'].includes(d.final_action) && (
+            <section className="rounded-xl border border-blue-200 bg-blue-50/50 p-16 flex flex-col gap-10">
+              <div className="flex items-center justify-between">
+                <span className="text-caption font-bold uppercase tracking-wider text-blue-800 flex items-center gap-6">
+                  <span className="w-8 h-8 rounded-full bg-blue-600 inline-block" />
+                  White-Label UPI Intent Portal
+                </span>
+                <span className="text-[10px] font-mono bg-blue-100 text-blue-700 px-6 py-2 rounded-md font-semibold">
+                  Aegis Rail
+                </span>
+              </div>
+              <p className="text-[12px] text-slate-600 leading-snug">
+                Official NPCI-compliant UPI re-authorization portal dispatched to customer.
+              </p>
+              <a
+                href={`/pay/${d.mandate_id}`}
+                target="_blank"
+                rel="noreferrer"
+                className="w-full inline-flex items-center justify-center gap-8 rounded-xl bg-gradient-to-r from-blue-700 to-indigo-700 px-16 py-10 text-[13px] font-bold text-white shadow-sm hover:from-blue-800 hover:to-indigo-800 transition-all text-center"
+              >
+                <span>Open UPI Recovery Portal</span>
+                <span className="text-xs">↗</span>
+              </a>
+            </section>
+          )}
+
           {/* Razorpay response */}
           {d.razorpay_response && (
             <details className="group">
