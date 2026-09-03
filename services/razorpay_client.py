@@ -81,6 +81,11 @@ class RazorpayClient:
             "upi_link": False if is_test_mode else upi_intent,
             "notify": {"sms": False, "email": bool(customer_email)},
             "notes": {"mandate_id": mandate_id, "recovery_type": "UPI_INTENT" if upi_intent else "RENEWAL"},
+            "options": {
+                "checkout": {
+                    "name": "Aegis Mandate Recovery",
+                }
+            },
         }
         if customer_email or customer_contact:
             payload["customer"] = {
@@ -148,6 +153,11 @@ async def create_payment_link(
         "upi_link": False if is_test_mode else upi_intent,
         "notify": {"sms": False, "email": bool(customer_email)},
         "notes": {"mandate_id": mandate_id, "recovery_type": "UPI_INTENT" if upi_intent else "RENEWAL"},
+        "options": {
+            "checkout": {
+                "name": "Aegis Mandate Recovery",
+            }
+        },
     }
     if customer_email or customer_contact:
         payload["customer"] = {
