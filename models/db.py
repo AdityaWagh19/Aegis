@@ -153,22 +153,27 @@ async def init_db():
         except Exception:
             pass
 
-    # Seed default tenant if not exists so authenticated API calls succeed out of the box
-    async with AsyncSessionLocal() as session:
-        stmt = select(TenantORM).where(TenantORM.tenant_id == "default")
-        result = await session.execute(stmt)
-        default_tenant = result.scalars().first()
-        if not default_tenant:
-            from models.tenant import hash_api_key
-            default_api_key = os.getenv("AEGIS_DEFAULT_API_KEY", "aegis_demo_key_2026")
-            tenant = TenantORM(
-                tenant_id="default",
-                name="Default Organization",
-                api_key_hash=hash_api_key(default_api_key),
-                is_active=True,
-            )
-            config = TenantComplianceConfigORM(tenant_id="default")
-            session.add(tenant)
-            session.add(config)
-            await session.commit()
+        # Seed default tenant if not exists so authenticated API calls succeed out of the box
+        try:
+            res = await conn.execute(text("SELECT tenant_id FROM tenants WHERE tenant_id = 'default'"))
+            if not res.first():
+                from models.tenant import hash_api_key
+                default_api_key = os.getenv("AEGIS_DEFAULT_API_KEY", "aegis_demo_key_2026")
+                key_hash = hash_api_key(default_api_key)
+                await conn.execute(
+                    text(
+                        "INSERT INTO tenants (tenant_id, name, api_key_hash, is_active, created_at) "
+                        "VALUES ('default', 'Default Organization', :key_hash, true, CURRENT_TIMESTAMP)"
+                    ),
+                    {"key_hash": key_hash},
+                )
+                await conn.execute(
+                    text(
+                        "INSERT INTO tenant_compliance_configs (tenant_id, afa_threshold_general, afa_threshold_sip_insurance, max_retry_upi_autopay, max_retry_enach, pre_debit_notice_window_hours, tier2_budget_per_minute, updated_at) "
+                        "VALUES ('default', 15000, 100000, 3, 2, 24, 10, CURRENT_TIMESTAMP)"
+                    )
+                )
+        except Exception:
+            pass
+
 

@@ -100,8 +100,11 @@ jobs:
             grep -q '^DEMO_CUSTOMER_PHONE=' .env && sed -i 's/^DEMO_CUSTOMER_PHONE=.*/DEMO_CUSTOMER_PHONE=+917397918047/' .env || echo "DEMO_CUSTOMER_PHONE=+917397918047" >> .env
             if [ -f alembic.ini ]; then docker compose run --rm api alembic upgrade head; fi
             docker compose up --build -d
+            sleep 3
+            docker compose ps
             # Clean reset of transaction tables for demo
             docker compose exec -T api python scripts/reset_db.py || true
+            docker compose logs --tail=40 api
             sudo systemctl reload nginx
             echo "Aegis deployed and reset for demo successfully"
 

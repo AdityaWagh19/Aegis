@@ -13,6 +13,7 @@ COPY models/ models/
 COPY services/ services/
 COPY workers/ workers/
 COPY observability/ observability/
+COPY scripts/ scripts/
 
 EXPOSE 8000
 
