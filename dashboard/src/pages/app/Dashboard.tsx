@@ -30,7 +30,7 @@ export default function Dashboard() {
   useEffect(() => {
     document.title = 'Overview · Aegis';
     load();
-    const interval = setInterval(load, 10_000);
+    const interval = setInterval(load, 3_000);
     return () => clearInterval(interval);
   }, [load]);
 
