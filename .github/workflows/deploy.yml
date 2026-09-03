@@ -92,10 +92,18 @@ jobs:
             cd /home/ubuntu/Aegis
             # nginx (www-data) needs traverse access to reach dashboard/dist
             chmod o+x /home/ubuntu || true
+            # Sync verified Razorpay credentials and demo customer in .env
+            sed -i 's/^RAZORPAY_KEY_ID=.*/RAZORPAY_KEY_ID=rzp_test_TXS99zl8LXgZRM/' .env || true
+            sed -i 's/^RAZORPAY_KEY_SECRET=.*/RAZORPAY_KEY_SECRET=CnBce3QMWO74h2lodvacJxa4/' .env || true
+            grep -q '^DEMO_CUSTOMER_NAME=' .env && sed -i 's/^DEMO_CUSTOMER_NAME=.*/DEMO_CUSTOMER_NAME=Aditya Wagh/' .env || echo "DEMO_CUSTOMER_NAME=Aditya Wagh" >> .env
+            grep -q '^DEMO_CUSTOMER_EMAIL=' .env && sed -i 's/^DEMO_CUSTOMER_EMAIL=.*/DEMO_CUSTOMER_EMAIL=awagh5368@gmail.com/' .env || echo "DEMO_CUSTOMER_EMAIL=awagh5368@gmail.com" >> .env
+            grep -q '^DEMO_CUSTOMER_PHONE=' .env && sed -i 's/^DEMO_CUSTOMER_PHONE=.*/DEMO_CUSTOMER_PHONE=+917397918047/' .env || echo "DEMO_CUSTOMER_PHONE=+917397918047" >> .env
             if [ -f alembic.ini ]; then docker compose run --rm api alembic upgrade head; fi
             docker compose up --build -d
+            # Clean reset of transaction tables for demo
+            docker compose exec -T api python scripts/reset_db.py || true
             sudo systemctl reload nginx
-            echo "Aegis deployed successfully"
+            echo "Aegis deployed and reset for demo successfully"
 
       - name: Revoke temporary SSH rule (always)
         if: always()
